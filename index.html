@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ALM809P — Viewer 3D | BaW Lab</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;display:flex;height:100vh;overflow:hidden}
+#sidebar{width:190px;background:#111;border-right:1px solid #1e1e1e;padding:14px;flex-shrink:0}
+#sidebar h2{font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px}
+.level-group{margin-bottom:10px}
+.level-label{font-size:9px;color:#333;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.scan-btn{display:block;width:100%;text-align:left;padding:7px 10px;background:#1a1a1a;border:1px solid #242424;color:#888;border-radius:5px;cursor:pointer;font-size:11px;transition:all .12s;margin-bottom:2px}
+.scan-btn:hover{background:#1e1e1e;border-color:#333;color:#ccc}
+.scan-btn.active{background:#1a2f4f;border-color:#2563eb;color:#fff}
+#viewer{flex:1;position:relative}
+#loading{position:absolute;inset:0;background:rgba(0,0,0,.85);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.spinner{width:36px;height:36px;border:3px solid #2a2a2a;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#prog{font-size:12px;color:#666}
+#scan-name{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.7);padding:4px 10px;border-radius:4px;font-size:11px;color:#aaa}
+#controls{position:absolute;top:10px;right:10px;display:flex;gap:5px}
+.ctrl-btn{padding:4px 10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#aaa;border-radius:4px;cursor:pointer;font-size:11px}
+.ctrl-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+#status{position:absolute;bottom:8px;left:10px;font-size:10px;color:#333}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="sidebar">
+  <h2>ALM809P · BaW Lab</h2>
+  <div class="level-group"><div class="level-label">🅿️ Sótano</div><button class="scan-btn" data-scan="N-1_Estacionamiento">Estacionamiento</button></div>
+  <div class="level-group"><div class="level-label">🏢 Planta Baja</div><button class="scan-btn" data-scan="N0_Planta_Baja">Planta Baja</button></div>
+  <div class="level-group"><div class="level-label">🏠 Piso 1</div><button class="scan-btn" data-scan="N1_Piso1">Piso 1</button></div>
+  <div class="level-group"><div class="level-label">🏠 Piso 2</div><button class="scan-btn" data-scan="N2_Piso2">Piso 2</button></div>
+  <div class="level-group"><div class="level-label">🏠 Piso 3</div><button class="scan-btn" data-scan="N3_Piso3">D304</button></div>
+  <div class="level-group"><div class="level-label">🏠 Piso 4</div><button class="scan-btn" data-scan="N4_Piso4">D403</button></div>
+</div>
+<div id="viewer">
+  <div id="scan-name">← Selecciona un nivel</div>
+  <div id="controls"><button class="ctrl-btn" id="resetCam">Reset</button><button class="ctrl-btn" id="wireBtn">Wireframe</button></div>
+  <div id="loading"><div class="spinner"></div><div id="prog">Cargando…</div></div>
+  <div id="status">🖱 Orbitar: click+drag · Zoom: scroll · Pan: shift+drag</div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+const viewer=document.getElementById('viewer');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(viewer.clientWidth,viewer.clientHeight);
+viewer.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0a0a0a);
+const camera=new THREE.PerspectiveCamera(60,viewer.clientWidth/viewer.clientHeight,0.01,500);
+camera.position.set(5,4,8);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.dampingFactor=0.07;
+scene.add(new THREE.AmbientLight(0xffffff,0.8));
+const dir=new THREE.DirectionalLight(0xffffff,0.7);dir.position.set(3,8,5);scene.add(dir);
+scene.add(new THREE.HemisphereLight(0x8090b0,0x303040,0.4));
+scene.add(new THREE.GridHelper(30,30,0x1a1a1a,0x141414));
+let current=null,wireMode=false,defPos,defTarget;
+function load(name){
+  const loading=document.getElementById('loading');
+  const prog=document.getElementById('prog');
+  document.getElementById('scan-name').textContent=name.replace(/_/g,' ');
+  loading.style.display='flex';prog.textContent='Descargando…';
+  if(current){scene.remove(current);current=null;}
+  new OBJLoader().load(name+'.obj',(obj)=>{
+    const box=new THREE.Box3().setFromObject(obj);
+    const center=box.getCenter(new THREE.Vector3());
+    const size=box.getSize(new THREE.Vector3());
+    obj.position.sub(center);obj.position.y=-box.min.y+center.y;
+    const maxDim=Math.max(size.x,size.y,size.z);
+    const scale=8/maxDim;obj.scale.setScalar(scale);
+    obj.traverse(c=>{if(c.isMesh){c.material=new THREE.MeshLambertMaterial({color:0xd0c4b0,side:THREE.DoubleSide});}});
+    current=obj;scene.add(obj);
+    const d=maxDim*scale;
+    camera.position.set(d,d*0.7,d);controls.target.set(0,d*0.15,0);controls.update();
+    defPos=camera.position.clone();defTarget=controls.target.clone();
+    if(wireMode)wire(true);
+    loading.style.display='none';
+  },(e)=>{if(e.total)prog.textContent=Math.round(e.loaded/e.total*100)+'%';},
+  ()=>{prog.textContent='Error cargando modelo';});
+}
+function wire(on){if(!current)return;current.traverse(c=>{if(!c.isMesh)return;if(on){c.userData._m=c.material;c.material=new THREE.MeshBasicMaterial({color:0x3b82f6,wireframe:true});}else if(c.userData._m)c.material=c.userData._m;});}
+document.getElementById('wireBtn').addEventListener('click',()=>{wireMode=!wireMode;wire(wireMode);document.getElementById('wireBtn').textContent=wireMode?'Sólido':'Wireframe';});
+document.getElementById('resetCam').addEventListener('click',()=>{if(!defPos)return;camera.position.copy(defPos);controls.target.copy(defTarget);controls.update();});
+document.querySelectorAll('.scan-btn').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('.scan-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');wireMode=false;document.getElementById('wireBtn').textContent='Wireframe';load(b.dataset.scan);});});
+window.addEventListener('resize',()=>{camera.aspect=viewer.clientWidth/viewer.clientHeight;camera.updateProjectionMatrix();renderer.setSize(viewer.clientWidth,viewer.clientHeight);});
+(function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);})();
+</script>
+</body>
+</html>
