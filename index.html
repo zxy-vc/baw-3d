@@ -7,15 +7,29 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;display:flex;height:100vh;overflow:hidden}
-#sidebar{width:190px;background:#111;border-right:1px solid #1e1e1e;padding:14px;flex-shrink:0}
+#sidebar{width:200px;background:#111;border-right:1px solid #1e1e1e;padding:14px;flex-shrink:0;overflow-y:auto}
 #sidebar h2{font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px}
-.level-group{margin-bottom:10px}
+.section-divider{height:1px;background:#1e1e1e;margin:10px 0}
+.section-label{font-size:9px;color:#333;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.level-group{margin-bottom:8px}
 .level-label{font-size:9px;color:#333;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
 .scan-btn{display:block;width:100%;text-align:left;padding:7px 10px;background:#1a1a1a;border:1px solid #242424;color:#888;border-radius:5px;cursor:pointer;font-size:11px;transition:all .12s;margin-bottom:2px}
 .scan-btn:hover{background:#1e1e1e;border-color:#333;color:#ccc}
 .scan-btn.active{background:#1a2f4f;border-color:#2563eb;color:#fff}
+.btn-full{display:block;width:100%;text-align:left;padding:8px 10px;background:#1a2a1a;border:1px solid #2a3a2a;color:#5a8a5a;border-radius:5px;cursor:pointer;font-size:11px;transition:all .12s;margin-bottom:6px;font-weight:600}
+.btn-full:hover{background:#1e2e1e;border-color:#3a6a3a;color:#8aba8a}
+.btn-full.active{background:#1a3a1a;border-color:#3a8a3a;color:#8be08b}
+
+/* Floor toggles in full-building mode */
+#floor-toggles{display:none;padding:0 0 4px 0}
+#floor-toggles.visible{display:block}
+.floor-toggle{display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;border-radius:4px;font-size:11px;color:#666;transition:all .1s;margin-bottom:1px}
+.floor-toggle:hover{background:#1a1a1a;color:#aaa}
+.floor-toggle input[type=checkbox]{accent-color:#3b82f6;cursor:pointer}
+.floor-toggle.loaded{color:#999}
+
 #viewer{flex:1;position:relative}
-#loading{position:absolute;inset:0;background:rgba(0,0,0,.85);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+#loading{position:absolute;inset:0;background:rgba(0,0,0,.85);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:10}
 .spinner{width:36px;height:36px;border:3px solid #2a2a2a;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 #prog{font-size:12px;color:#666}
@@ -32,6 +46,23 @@ body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;displ
 <body>
 <div id="sidebar">
   <h2>ALM809P · BaW Lab</h2>
+
+  <!-- Full building button -->
+  <div class="section-label">Vista completa</div>
+  <button class="btn-full" id="btn-all-floors">🏗 Edificio completo</button>
+  <div id="floor-toggles">
+    <div class="floor-toggle" data-scan="N-1_Estacionamiento"><input type="checkbox" checked> 🅿️ Estacionamiento</div>
+    <div class="floor-toggle" data-scan="N0_Planta_Baja"><input type="checkbox" checked> 🏢 Planta Baja</div>
+    <div class="floor-toggle" data-scan="N1_Piso1"><input type="checkbox" checked> 🏠 Piso 1</div>
+    <div class="floor-toggle" data-scan="N2_Piso2"><input type="checkbox" checked> 🏠 Piso 2</div>
+    <div class="floor-toggle" data-scan="N3_Piso3"><input type="checkbox" checked> 🏠 Piso 3 (D304)</div>
+    <div class="floor-toggle" data-scan="N4_Piso4"><input type="checkbox" checked> 🏠 Piso 4 (D403)</div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- Individual floors -->
+  <div class="section-label">Por nivel</div>
   <div class="level-group"><div class="level-label">🅿️ Sótano</div><button class="scan-btn" data-scan="N-1_Estacionamiento">Estacionamiento</button></div>
   <div class="level-group"><div class="level-label">🏢 Planta Baja</div><button class="scan-btn" data-scan="N0_Planta_Baja">Planta Baja</button></div>
   <div class="level-group"><div class="level-label">🏠 Piso 1</div><button class="scan-btn" data-scan="N1_Piso1">Piso 1</button></div>
@@ -40,7 +71,7 @@ body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;displ
   <div class="level-group"><div class="level-label">🏠 Piso 4</div><button class="scan-btn" data-scan="N4_Piso4">D403</button></div>
 </div>
 <div id="viewer">
-  <div id="scan-name">← Selecciona un nivel</div>
+  <div id="scan-name">← Selecciona un nivel o "Edificio completo"</div>
   <div id="controls"><button class="ctrl-btn" id="resetCam">Reset</button><button class="ctrl-btn" id="wireBtn">Wireframe</button></div>
   <div id="loading"><div class="spinner"></div><div id="prog">Cargando…</div></div>
   <div id="status">🖱 Orbitar: click+drag · Zoom: scroll · Pan: shift+drag</div>
@@ -50,51 +81,289 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
-const viewer=document.getElementById('viewer');
-const renderer=new THREE.WebGLRenderer({antialias:true});
+const viewer = document.getElementById('viewer');
+const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-renderer.setSize(viewer.clientWidth,viewer.clientHeight);
+renderer.setSize(viewer.clientWidth, viewer.clientHeight);
 viewer.appendChild(renderer.domElement);
-const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x0a0a0a);
-const camera=new THREE.PerspectiveCamera(60,viewer.clientWidth/viewer.clientHeight,0.01,500);
-camera.position.set(5,4,8);
-const controls=new OrbitControls(camera,renderer.domElement);
-controls.enableDamping=true;controls.dampingFactor=0.07;
-scene.add(new THREE.AmbientLight(0xffffff,0.8));
-const dir=new THREE.DirectionalLight(0xffffff,0.7);dir.position.set(3,8,5);scene.add(dir);
-scene.add(new THREE.HemisphereLight(0x8090b0,0x303040,0.4));
-scene.add(new THREE.GridHelper(30,30,0x1a1a1a,0x141414));
-let current=null,wireMode=false,defPos,defTarget;
-function load(name){
-  const loading=document.getElementById('loading');
-  const prog=document.getElementById('prog');
-  document.getElementById('scan-name').textContent=name.replace(/_/g,' ');
-  loading.style.display='flex';prog.textContent='Descargando…';
-  if(current){scene.remove(current);current=null;}
-  new OBJLoader().load(name+'.obj',(obj)=>{
-    const box=new THREE.Box3().setFromObject(obj);
-    const center=box.getCenter(new THREE.Vector3());
-    const size=box.getSize(new THREE.Vector3());
-    obj.position.sub(center);obj.position.y=-box.min.y+center.y;
-    const maxDim=Math.max(size.x,size.y,size.z);
-    const scale=8/maxDim;obj.scale.setScalar(scale);
-    obj.traverse(c=>{if(c.isMesh){c.material=new THREE.MeshLambertMaterial({color:0xd0c4b0,side:THREE.DoubleSide});}});
-    current=obj;scene.add(obj);
-    const d=maxDim*scale;
-    camera.position.set(d,d*0.7,d);controls.target.set(0,d*0.15,0);controls.update();
-    defPos=camera.position.clone();defTarget=controls.target.clone();
-    if(wireMode)wire(true);
-    loading.style.display='none';
-  },(e)=>{if(e.total)prog.textContent=Math.round(e.loaded/e.total*100)+'%';},
-  ()=>{prog.textContent='Error cargando modelo';});
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a0a);
+const camera = new THREE.PerspectiveCamera(60, viewer.clientWidth/viewer.clientHeight, 0.01, 2000);
+camera.position.set(20, 15, 30);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+const dir = new THREE.DirectionalLight(0xffffff, 0.7);
+dir.position.set(3, 8, 5);
+scene.add(dir);
+scene.add(new THREE.HemisphereLight(0x8090b0, 0x303040, 0.4));
+scene.add(new THREE.GridHelper(80, 40, 0x1a1a1a, 0x141414));
+
+// Floor colors (individual mode = neutral, full mode = per-floor color)
+const FLOOR_COLORS_INDIVIDUAL = 0xd0c4b0;
+const FLOOR_COLORS_FULL = {
+  'N-1_Estacionamiento': 0x7a6e60,  // gris oscuro
+  'N0_Planta_Baja':      0xc8a870,  // arena
+  'N1_Piso1':            0x70a0c8,  // azul claro
+  'N2_Piso2':            0x70c890,  // verde
+  'N3_Piso3':            0xc87090,  // rosa
+  'N4_Piso4':            0x9070c8,  // morado
+};
+
+// Real vertical offsets (meters, normalized floor-to-floor)
+// Each OBJ Y is measured from scanner position — we normalize to floor=0, then add:
+// N-1: 0m (sótano)
+// N0:  +3.0m (planta baja)
+// N1:  +6.2m
+// N2:  +9.4m
+// N3:  +12.4m
+// N4:  +15.4m
+const FLOOR_Y_OFFSETS = {
+  'N-1_Estacionamiento': 0.0,
+  'N0_Planta_Baja':      3.0,
+  'N1_Piso1':            6.2,
+  'N2_Piso2':            9.4,
+  'N3_Piso3':            12.4,
+  'N4_Piso4':            15.4,
+};
+
+let singleObject = null;
+let floorObjects = {};  // { scanName: THREE.Group }
+let wireMode = false;
+let defPos, defTarget;
+let mode = 'none'; // 'single' | 'full'
+
+function showLoading(msg) {
+  const el = document.getElementById('loading');
+  document.getElementById('prog').textContent = msg || 'Cargando…';
+  el.style.display = 'flex';
 }
-function wire(on){if(!current)return;current.traverse(c=>{if(!c.isMesh)return;if(on){c.userData._m=c.material;c.material=new THREE.MeshBasicMaterial({color:0x3b82f6,wireframe:true});}else if(c.userData._m)c.material=c.userData._m;});}
-document.getElementById('wireBtn').addEventListener('click',()=>{wireMode=!wireMode;wire(wireMode);document.getElementById('wireBtn').textContent=wireMode?'Sólido':'Wireframe';});
-document.getElementById('resetCam').addEventListener('click',()=>{if(!defPos)return;camera.position.copy(defPos);controls.target.copy(defTarget);controls.update();});
-document.querySelectorAll('.scan-btn').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('.scan-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');wireMode=false;document.getElementById('wireBtn').textContent='Wireframe';load(b.dataset.scan);});});
-window.addEventListener('resize',()=>{camera.aspect=viewer.clientWidth/viewer.clientHeight;camera.updateProjectionMatrix();renderer.setSize(viewer.clientWidth,viewer.clientHeight);});
-(function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);})();
+function hideLoading() {
+  document.getElementById('loading').style.display = 'none';
+}
+
+// ── Single floor loader ──────────────────────────────────────────────────
+function loadSingle(name) {
+  mode = 'single';
+  document.getElementById('btn-all-floors').classList.remove('active');
+  document.getElementById('floor-toggles').classList.remove('visible');
+
+  document.querySelectorAll('.scan-btn').forEach(x => x.classList.remove('active'));
+  document.querySelector(`.scan-btn[data-scan="${name}"]`)?.classList.add('active');
+  document.getElementById('scan-name').textContent = name.replace(/_/g,' ');
+
+  // Remove all full-building objects
+  clearFullBuilding();
+
+  showLoading('Descargando…');
+  if (singleObject) { scene.remove(singleObject); singleObject = null; }
+
+  new OBJLoader().load(name+'.obj', (obj) => {
+    const box = new THREE.Box3().setFromObject(obj);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+
+    // Normalize: center XZ, floor at Y=0
+    obj.position.x = -center.x;
+    obj.position.z = -center.z;
+    obj.position.y = -box.min.y;
+
+    const maxDim = Math.max(size.x, size.y, size.z);
+    obj.traverse(c => {
+      if (c.isMesh) {
+        c.material = new THREE.MeshLambertMaterial({color: FLOOR_COLORS_INDIVIDUAL, side: THREE.DoubleSide});
+      }
+    });
+
+    singleObject = obj;
+    scene.add(obj);
+
+    // Camera: frame the loaded object
+    const camD = maxDim * 1.4;
+    camera.position.set(camD, camD * 0.7, camD);
+    controls.target.set(0, size.y * 0.3, 0);
+    controls.update();
+    defPos = camera.position.clone();
+    defTarget = controls.target.clone();
+
+    if (wireMode) applyWireSingle(true);
+    hideLoading();
+  }, (e) => {
+    if (e.total) document.getElementById('prog').textContent = Math.round(e.loaded/e.total*100)+'%';
+  }, () => {
+    document.getElementById('prog').textContent = 'Error cargando modelo';
+  });
+}
+
+// ── Full building loader ──────────────────────────────────────────────────
+const SCAN_NAMES = ['N-1_Estacionamiento','N0_Planta_Baja','N1_Piso1','N2_Piso2','N3_Piso3','N4_Piso4'];
+
+function clearSingle() {
+  if (singleObject) { scene.remove(singleObject); singleObject = null; }
+  document.querySelectorAll('.scan-btn').forEach(x => x.classList.remove('active'));
+}
+function clearFullBuilding() {
+  Object.values(floorObjects).forEach(obj => scene.remove(obj));
+  floorObjects = {};
+}
+
+async function loadFullBuilding() {
+  mode = 'full';
+  clearSingle();
+  document.getElementById('btn-all-floors').classList.add('active');
+  document.getElementById('floor-toggles').classList.add('visible');
+  document.getElementById('scan-name').textContent = 'Edificio completo — ALM809P';
+
+  showLoading('Cargando edificio…');
+  clearFullBuilding();
+
+  const loader = new OBJLoader();
+  let loaded = 0;
+
+  const promises = SCAN_NAMES.map(name => new Promise((resolve) => {
+    const checkVisible = document.querySelector(`.floor-toggle[data-scan="${name}"] input`);
+    if (checkVisible && !checkVisible.checked) { resolve(); return; }
+
+    loader.load(name+'.obj', (obj) => {
+      const box = new THREE.Box3().setFromObject(obj);
+      const size = box.getSize(new THREE.Vector3());
+
+      // Step 1: normalize — move floor to Y=0, center on XZ origin
+      const cx = (box.min.x + box.max.x) / 2;
+      const cz = (box.min.z + box.max.z) / 2;
+      obj.position.x = -cx;
+      obj.position.z = -cz;
+      obj.position.y = -box.min.y + FLOOR_Y_OFFSETS[name];  // floor → 0 + stack offset
+
+      const color = FLOOR_COLORS_FULL[name] || 0xaaaaaa;
+      obj.traverse(c => {
+        if (c.isMesh) {
+          c.material = new THREE.MeshLambertMaterial({color, side: THREE.DoubleSide, transparent: true, opacity: 0.9});
+        }
+      });
+
+      floorObjects[name] = obj;
+      scene.add(obj);
+
+      loaded++;
+      document.getElementById('prog').textContent = `Cargando ${loaded}/${SCAN_NAMES.length}…`;
+      if (wireMode) applyWireObj(obj, true);
+
+      // Mark toggle as loaded
+      document.querySelector(`.floor-toggle[data-scan="${name}"]`)?.classList.add('loaded');
+      resolve();
+    }, undefined, () => { resolve(); });
+  }));
+
+  await Promise.all(promises);
+  hideLoading();
+
+  // Frame entire building
+  const allBox = new THREE.Box3();
+  Object.values(floorObjects).forEach(obj => allBox.expandByObject(obj));
+  const allSize = allBox.getSize(new THREE.Vector3());
+  const allCenter = allBox.getCenter(new THREE.Vector3());
+  const camD = Math.max(allSize.x, allSize.z) * 1.8;
+  camera.position.set(allCenter.x + camD, allCenter.y + camD * 0.6, allCenter.z + camD);
+  controls.target.copy(allCenter);
+  controls.update();
+  defPos = camera.position.clone();
+  defTarget = controls.target.clone();
+}
+
+// ── Toggle floor visibility in full mode ──────────────────────────────────
+document.querySelectorAll('.floor-toggle').forEach(toggle => {
+  const cb = toggle.querySelector('input');
+  cb.addEventListener('change', () => {
+    const name = toggle.dataset.scan;
+    if (mode !== 'full') return;
+    if (cb.checked) {
+      if (!floorObjects[name]) {
+        // Load on demand
+        showLoading('Cargando piso…');
+        new OBJLoader().load(name+'.obj', (obj) => {
+          const box = new THREE.Box3().setFromObject(obj);
+          const cx = (box.min.x + box.max.x)/2;
+          const cz = (box.min.z + box.max.z)/2;
+          obj.position.x = -cx; obj.position.z = -cz;
+          obj.position.y = -box.min.y + FLOOR_Y_OFFSETS[name];
+          const color = FLOOR_COLORS_FULL[name] || 0xaaaaaa;
+          obj.traverse(c => {
+            if (c.isMesh) c.material = new THREE.MeshLambertMaterial({color, side: THREE.DoubleSide, transparent: true, opacity: 0.9});
+          });
+          floorObjects[name] = obj;
+          scene.add(obj);
+          if (wireMode) applyWireObj(obj, true);
+          hideLoading();
+        }, undefined, hideLoading);
+      } else {
+        floorObjects[name].visible = true;
+      }
+    } else {
+      if (floorObjects[name]) floorObjects[name].visible = false;
+    }
+  });
+});
+
+// ── Wireframe helpers ──────────────────────────────────────────────────────
+function applyWireSingle(on) {
+  if (!singleObject) return;
+  singleObject.traverse(c => {
+    if (!c.isMesh) return;
+    if (on) { c.userData._m = c.material; c.material = new THREE.MeshBasicMaterial({color:0x3b82f6, wireframe:true}); }
+    else if (c.userData._m) c.material = c.userData._m;
+  });
+}
+function applyWireObj(obj, on) {
+  obj.traverse(c => {
+    if (!c.isMesh) return;
+    if (on) { c.userData._m = c.material; c.material = new THREE.MeshBasicMaterial({color:0x3b82f6, wireframe:true}); }
+    else if (c.userData._m) c.material = c.userData._m;
+  });
+}
+function applyWireAll(on) {
+  if (mode === 'single') applyWireSingle(on);
+  else Object.values(floorObjects).forEach(obj => applyWireObj(obj, on));
+}
+
+// ── Button events ──────────────────────────────────────────────────────────
+document.getElementById('btn-all-floors').addEventListener('click', loadFullBuilding);
+
+document.querySelectorAll('.scan-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    wireMode = false;
+    document.getElementById('wireBtn').textContent = 'Wireframe';
+    loadSingle(b.dataset.scan);
+  });
+});
+
+document.getElementById('wireBtn').addEventListener('click', () => {
+  wireMode = !wireMode;
+  applyWireAll(wireMode);
+  document.getElementById('wireBtn').textContent = wireMode ? 'Sólido' : 'Wireframe';
+});
+document.getElementById('resetCam').addEventListener('click', () => {
+  if (!defPos) return;
+  camera.position.copy(defPos);
+  controls.target.copy(defTarget);
+  controls.update();
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = viewer.clientWidth/viewer.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(viewer.clientWidth, viewer.clientHeight);
+});
+
+(function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+})();
 </script>
 </body>
 </html>
