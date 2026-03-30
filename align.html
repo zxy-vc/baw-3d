@@ -417,7 +417,10 @@ function renderPanel(scan, error=false) {
       ${makeCtrlRow(scan.id,'dy','Y (m)',-5,5,0.05)}
       ${makeCtrlRow(scan.id,'dz','Z (m)',-30,30,0.05)}
       ${makeCtrlRow(scan.id,'rotY','Rot Y°',-180,180,0.5,'°')}
-      <button class="scan-ref-btn" data-id="${scan.id}">Usar como referencia</button>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="scan-ref-btn" data-id="${scan.id}" style="flex:1">Usar como referencia</button>
+        <button class="scan-bake-btn" data-id="${scan.id}" style="flex:1;background:#1a1a2a;border-color:#334;color:#6688cc" title="Fija posición actual — sliders vuelven a cero">📌 Fijar posición</button>
+      </div>
     </div>
     ` : `<div class="scan-controls" data-id="${scan.id}"><p style="font-size:10px;color:#444;padding:6px 0">Referencia — posición fija (centrada en 0,0)</p></div>`}
   `;
@@ -493,6 +496,47 @@ function renderPanel(scan, error=false) {
     // Set as reference
     panel.querySelector('.scan-ref-btn').addEventListener('click', () => {
       setReference(scan.id);
+    });
+
+    // Bake: commit current transform into geometry, reset sliders to 0
+    panel.querySelector('.scan-bake-btn').addEventListener('click', () => {
+      const s = loadedScans.find(x => x.id === scan.id);
+      if (!s || !s.obj) return;
+
+      // Bake position & rotation into geometry vertices
+      s.obj.updateMatrixWorld(true);
+      s.obj.traverse(c => {
+        if (!c.isMesh) return;
+        c.geometry = c.geometry.clone();
+        c.geometry.applyMatrix4(c.matrixWorld);
+        // Reset local transform after baking
+        c.position.set(0,0,0);
+        c.rotation.set(0,0,0);
+        c.scale.set(1,1,1);
+        c.updateMatrix();
+      });
+
+      // Reset group transform
+      s.obj.position.set(0,0,0);
+      s.obj.rotation.set(0,0,0);
+      s.baseY = 0;
+
+      // Reset state values
+      s.dx = 0; s.dy = 0; s.dz = 0; s.rotY = 0;
+
+      // Reset all controls to 0
+      ['dx','dy','dz','rotY'].forEach(axis => {
+        const slider = panel.querySelector(`.ctrl-slider[data-axis="${axis}"]`);
+        if (slider) slider.value = 0;
+        const numEl = document.getElementById(`num-${axis}-${s.id}`);
+        if (numEl) numEl.value = '0.00';
+      });
+
+      // Visual feedback
+      const bakeBtn = panel.querySelector('.scan-bake-btn');
+      bakeBtn.textContent = '✅ Fijado';
+      bakeBtn.style.color = '#4ade80';
+      setTimeout(() => { bakeBtn.textContent = '📌 Fijar posición'; bakeBtn.style.color = '#6688cc'; }, 2000);
     });
   }
 }
