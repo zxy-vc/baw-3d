@@ -31,11 +31,17 @@ body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;displ
 .scan-loading{font-size:10px;color:#555}
 .scan-controls{padding:0 10px 10px;display:none}
 .scan-controls.open{display:block}
-.ctrl-row{display:flex;align-items:center;gap:8px;margin-top:6px}
-.ctrl-label{font-size:10px;color:#555;width:44px;flex-shrink:0;text-align:right}
-.ctrl-slider{flex:1;accent-color:#3b82f6;cursor:pointer}
-.ctrl-value{font-size:10px;color:#888;width:38px;text-align:right;font-family:monospace}
-.ctrl-reset{font-size:10px;color:#555;background:none;border:none;cursor:pointer;padding:0 4px}
+.ctrl-row{display:flex;align-items:center;gap:6px;margin-top:5px}
+.ctrl-label{font-size:10px;color:#555;width:40px;flex-shrink:0;text-align:right}
+.ctrl-slider{flex:1;accent-color:#3b82f6;cursor:pointer;min-width:0}
+/* Number input + arrow buttons */
+.ctrl-num-wrap{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.ctrl-arrow{width:18px;height:18px;background:#1a1a1a;border:1px solid #2a2a2a;color:#666;border-radius:3px;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}
+.ctrl-arrow:hover{background:#2a2a2a;color:#ccc}
+.ctrl-num{width:56px;background:#111;border:1px solid #2a2a2a;color:#aaa;font-size:10px;font-family:monospace;padding:2px 4px;border-radius:3px;text-align:right;-moz-appearance:textfield}
+.ctrl-num::-webkit-inner-spin-button,.ctrl-num::-webkit-outer-spin-button{-webkit-appearance:none}
+.ctrl-num:focus{outline:none;border-color:#3b82f6;color:#eee}
+.ctrl-reset{font-size:10px;color:#444;background:none;border:none;cursor:pointer;padding:0 2px;flex-shrink:0}
 .ctrl-reset:hover{color:#888}
 .scan-ref-btn{width:100%;margin-top:8px;padding:4px;background:none;border:1px solid #2a2a2a;color:#555;border-radius:3px;font-size:10px;cursor:pointer}
 .scan-ref-btn:hover{border-color:#3b82f6;color:#3b82f6}
@@ -269,6 +275,7 @@ function hideOverlay() {
 function applyTransform(scan) {
   if (!scan.obj) return;
   scan.obj.position.x = scan.dx;
+  scan.obj.position.y = scan.baseY + (scan.dy || 0);
   scan.obj.position.z = scan.dz;
   scan.obj.rotation.y = scan.rotY * Math.PI / 180;
 }
@@ -300,14 +307,16 @@ async function loadGroup(groupKey) {
   const promises = scans.map((scan, i) => new Promise((resolve) => {
     const color = COLORS[i % COLORS.length];
     const isRef = i === 0;
-    const scanState = { ...scan, obj: null, color, dx: 0, dz: 0, rotY: 0, isRef };
+    const scanState = { ...scan, obj: null, color, dx: 0, dy: 0, dz: 0, rotY: 0, isRef, baseY: 0 };
     loadedScans.push(scanState);
 
     const url = `${BASE}/${scan.folder}/ReprocessedMesh.obj`;
     loader.load(url, (obj) => {
       // Normalize: floor at Y=0
       const box = new THREE.Box3().setFromObject(obj);
-      obj.position.y = -box.min.y;
+      const baseY = -box.min.y;
+      obj.position.y = baseY;
+      scanState.baseY = baseY;
 
       // Reference: also center on XZ
       if (isRef) {
@@ -368,10 +377,25 @@ function framAll() {
   grid.position.y = box.min.y - 0.01;
 }
 
+// ── Control row builder ──────────────────────────────────────────────────
+function makeCtrlRow(id, axis, label, min, max, step, unit='') {
+  return `
+    <div class="ctrl-row">
+      <span class="ctrl-label">${label}</span>
+      <input type="range" class="ctrl-slider" data-id="${id}" data-axis="${axis}" min="${min}" max="${max}" step="${step}" value="0">
+      <div class="ctrl-num-wrap">
+        <button class="ctrl-arrow" data-id="${id}" data-axis="${axis}" data-dir="-1" data-step="${step}">−</button>
+        <input type="number" class="ctrl-num" id="num-${axis}-${id}" value="0" step="${step}" min="${min}" max="${max}" data-id="${id}" data-axis="${axis}" data-unit="${unit}">
+        <button class="ctrl-arrow" data-id="${id}" data-axis="${axis}" data-dir="1" data-step="${step}">+</button>
+      </div>
+      <button class="ctrl-reset" data-id="${id}" data-axis="${axis}" title="Reset">↺</button>
+    </div>`;
+}
+
 // ── Render panel for a scan ────────────────────────────────────────────────
 function renderPanel(scan, error=false) {
   const existing = document.querySelector(`.scan-panel[data-id="${scan.id}"]`);
-  if (existing) return; // already rendered
+  if (existing) return;
 
   const panel = document.createElement('div');
   panel.className = 'scan-panel';
@@ -389,27 +413,13 @@ function renderPanel(scan, error=false) {
     </div>
     ${!scan.isRef && !error ? `
     <div class="scan-controls" data-id="${scan.id}">
-      <div class="ctrl-row">
-        <span class="ctrl-label">X (m)</span>
-        <input type="range" class="ctrl-slider" data-id="${scan.id}" data-axis="dx" min="-30" max="30" step="0.05" value="0">
-        <span class="ctrl-value" id="val-dx-${scan.id}">0.00</span>
-        <button class="ctrl-reset" data-id="${scan.id}" data-axis="dx" title="Reset">↺</button>
-      </div>
-      <div class="ctrl-row">
-        <span class="ctrl-label">Z (m)</span>
-        <input type="range" class="ctrl-slider" data-id="${scan.id}" data-axis="dz" min="-30" max="30" step="0.05" value="0">
-        <span class="ctrl-value" id="val-dz-${scan.id}">0.00</span>
-        <button class="ctrl-reset" data-id="${scan.id}" data-axis="dz" title="Reset">↺</button>
-      </div>
-      <div class="ctrl-row">
-        <span class="ctrl-label">Rot Y°</span>
-        <input type="range" class="ctrl-slider" data-id="${scan.id}" data-axis="rotY" min="-180" max="180" step="0.5" value="0">
-        <span class="ctrl-value" id="val-rotY-${scan.id}">0.0°</span>
-        <button class="ctrl-reset" data-id="${scan.id}" data-axis="rotY" title="Reset">↺</button>
-      </div>
+      ${makeCtrlRow(scan.id,'dx','X (m)',-30,30,0.05)}
+      ${makeCtrlRow(scan.id,'dy','Y (m)',-5,5,0.05)}
+      ${makeCtrlRow(scan.id,'dz','Z (m)',-30,30,0.05)}
+      ${makeCtrlRow(scan.id,'rotY','Rot Y°',-180,180,0.5,'°')}
       <button class="scan-ref-btn" data-id="${scan.id}">Usar como referencia</button>
     </div>
-    ` : '<div class="scan-controls" data-id="${scan.id}"><p style="font-size:10px;color:#444;padding:6px 0">Referencia — posición fija (centrada en 0,0)</p></div>'}
+    ` : `<div class="scan-controls" data-id="${scan.id}"><p style="font-size:10px;color:#444;padding:6px 0">Referencia — posición fija (centrada en 0,0)</p></div>`}
   `;
 
   document.getElementById('scan-panels').appendChild(panel);
@@ -421,38 +431,62 @@ function renderPanel(scan, error=false) {
   });
 
   if (!scan.isRef && !error) {
-    // Auto-expand non-ref with controls
     const ctrl = panel.querySelector('.scan-controls');
     if (ctrl) ctrl.classList.add('open');
+
+    function syncControls(id, axis, val) {
+      const s = loadedScans.find(x => x.id === id);
+      if (!s) return;
+      const clampMin = axis === 'dy' ? -5 : (axis === 'rotY' ? -180 : -30);
+      const clampMax = axis === 'dy' ? 5  : (axis === 'rotY' ? 180  : 30);
+      val = Math.max(clampMin, Math.min(clampMax, val));
+      s[axis] = val;
+      applyTransform(s);
+      // Sync slider
+      const slider = panel.querySelector(`.ctrl-slider[data-id="${id}"][data-axis="${axis}"]`);
+      if (slider) slider.value = val;
+      // Sync number input
+      const numEl = document.getElementById(`num-${axis}-${id}`);
+      if (numEl) numEl.value = val.toFixed(axis === 'rotY' ? 1 : 2);
+    }
 
     // Slider events
     panel.querySelectorAll('.ctrl-slider').forEach(slider => {
       slider.addEventListener('input', () => {
-        const id = slider.dataset.id;
-        const axis = slider.dataset.axis;
-        const val = parseFloat(slider.value);
-        const s = loadedScans.find(x => x.id === id);
-        if (!s) return;
-        s[axis] = val;
-        applyTransform(s);
-        const valEl = document.getElementById(`val-${axis}-${id}`);
-        if (valEl) valEl.textContent = axis === 'rotY' ? val.toFixed(1)+'°' : val.toFixed(2);
+        syncControls(slider.dataset.id, slider.dataset.axis, parseFloat(slider.value));
+      });
+    });
+
+    // Number input events
+    panel.querySelectorAll('.ctrl-num').forEach(numEl => {
+      numEl.addEventListener('change', () => {
+        syncControls(numEl.dataset.id, numEl.dataset.axis, parseFloat(numEl.value) || 0);
+      });
+      numEl.addEventListener('keydown', e => {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          const step = parseFloat(numEl.step) || 0.05;
+          const delta = e.key === 'ArrowUp' ? step : -step;
+          const s = loadedScans.find(x => x.id === numEl.dataset.id);
+          if (s) syncControls(numEl.dataset.id, numEl.dataset.axis, (s[numEl.dataset.axis] || 0) + delta);
+        }
+      });
+    });
+
+    // Arrow buttons (+/-)
+    panel.querySelectorAll('.ctrl-arrow').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const step = parseFloat(btn.dataset.step) || 0.05;
+        const dir = parseFloat(btn.dataset.dir);
+        const s = loadedScans.find(x => x.id === btn.dataset.id);
+        if (s) syncControls(btn.dataset.id, btn.dataset.axis, (s[btn.dataset.axis] || 0) + step * dir);
       });
     });
 
     // Reset buttons
     panel.querySelectorAll('.ctrl-reset').forEach(btn => {
       btn.addEventListener('click', () => {
-        const id = btn.dataset.id;
-        const axis = btn.dataset.axis;
-        const s = loadedScans.find(x => x.id === id);
-        if (!s) return;
-        s[axis] = 0;
-        applyTransform(s);
-        const slider = panel.querySelector(`.ctrl-slider[data-id="${id}"][data-axis="${axis}"]`);
-        if (slider) slider.value = 0;
-        const valEl = document.getElementById(`val-${axis}-${id}`);
-        if (valEl) valEl.textContent = axis === 'rotY' ? '0.0°' : '0.00';
+        syncControls(btn.dataset.id, btn.dataset.axis, 0);
       });
     });
 
@@ -523,6 +557,7 @@ document.getElementById('export-btn').addEventListener('click', () => {
       isRef: s.isRef,
       transform: {
         dx: parseFloat(s.dx.toFixed(4)),
+        dy: parseFloat((s.dy||0).toFixed(4)),
         dz: parseFloat(s.dz.toFixed(4)),
         rotY_deg: parseFloat(s.rotY.toFixed(2)),
       }
