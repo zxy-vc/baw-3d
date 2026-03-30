@@ -104,6 +104,15 @@ scene.add(new THREE.HemisphereLight(0x8090b0, 0x303040, 0.4));
 scene.add(new THREE.GridHelper(80, 40, 0x1a1a1a, 0x141414));
 
 // Floor colors (individual mode = neutral, full mode = per-floor color)
+// OBJs over 100MB are served from GitHub Releases (can't live in Pages directly)
+const RELEASE_BASE = 'https://github.com/zxy-vc/baw-viewer/releases/download/v1.0-scans';
+const OBJ_URLS = {
+  'N-1_Estacionamiento': `${RELEASE_BASE}/N-1_Estacionamiento_aligned.obj`,
+};
+function objUrl(name) {
+  return OBJ_URLS[name] || (name + '.obj');
+}
+
 const FLOOR_COLORS_INDIVIDUAL = 0xd0c4b0;
 const FLOOR_COLORS_FULL = {
   'N-1_Estacionamiento': 0x7a6e60,  // gris oscuro
@@ -162,7 +171,7 @@ function loadSingle(name) {
   showLoading('Descargando…');
   if (singleObject) { scene.remove(singleObject); singleObject = null; }
 
-  new OBJLoader().load(name+'.obj', (obj) => {
+  new OBJLoader().load(objUrl(name), (obj) => {
     const box = new THREE.Box3().setFromObject(obj);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
@@ -228,7 +237,7 @@ async function loadFullBuilding() {
     const checkVisible = document.querySelector(`.floor-toggle[data-scan="${name}"] input`);
     if (checkVisible && !checkVisible.checked) { resolve(); return; }
 
-    loader.load(name+'.obj', (obj) => {
+    loader.load(objUrl(name), (obj) => {
       const box = new THREE.Box3().setFromObject(obj);
       const size = box.getSize(new THREE.Vector3());
 
@@ -285,7 +294,7 @@ document.querySelectorAll('.floor-toggle').forEach(toggle => {
       if (!floorObjects[name]) {
         // Load on demand
         showLoading('Cargando piso…');
-        new OBJLoader().load(name+'.obj', (obj) => {
+        new OBJLoader().load(objUrl(name), (obj) => {
           const box = new THREE.Box3().setFromObject(obj);
           const cx = (box.min.x + box.max.x)/2;
           const cz = (box.min.z + box.max.z)/2;
