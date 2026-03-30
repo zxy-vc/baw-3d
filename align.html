@@ -120,8 +120,9 @@ body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;displ
   <div id="scan-panels"></div>
 
   <div id="sidebar-bottom">
-    <button id="export-btn">💾 Exportar alineación JSON</button>
-    <div id="export-hint">Guarda este JSON para re-exportar los OBJs alineados</div>
+    <button id="export-btn">💾 Exportar JSON</button>
+    <button id="export-obj-btn" style="width:100%;margin-top:6px;padding:8px;background:#1a2a1a;border:1px solid #2a5a2a;color:#8be08b;border-radius:4px;font-size:12px;cursor:pointer;font-weight:600">⬇️ Exportar OBJ combinado</button>
+    <div id="export-hint">JSON = transforms | OBJ = geometría ya fusionada</div>
   </div>
 </div>
 
@@ -503,13 +504,18 @@ function renderPanel(scan, error=false) {
       const s = loadedScans.find(x => x.id === scan.id);
       if (!s || !s.obj) return;
 
+      // Accumulate transform into baked totals (for export)
+      s.baked_dx   = (s.baked_dx   || 0) + s.dx;
+      s.baked_dy   = (s.baked_dy   || 0) + (s.dy||0);
+      s.baked_dz   = (s.baked_dz   || 0) + s.dz;
+      s.baked_rotY = (s.baked_rotY || 0) + s.rotY;
+
       // Bake position & rotation into geometry vertices
       s.obj.updateMatrixWorld(true);
       s.obj.traverse(c => {
         if (!c.isMesh) return;
         c.geometry = c.geometry.clone();
         c.geometry.applyMatrix4(c.matrixWorld);
-        // Reset local transform after baking
         c.position.set(0,0,0);
         c.rotation.set(0,0,0);
         c.scale.set(1,1,1);
@@ -521,7 +527,7 @@ function renderPanel(scan, error=false) {
       s.obj.rotation.set(0,0,0);
       s.baseY = 0;
 
-      // Reset state values
+      // Reset live state values
       s.dx = 0; s.dy = 0; s.dz = 0; s.rotY = 0;
 
       // Reset all controls to 0
@@ -600,10 +606,10 @@ document.getElementById('export-btn').addEventListener('click', () => {
       name: s.name,
       isRef: s.isRef,
       transform: {
-        dx: parseFloat(s.dx.toFixed(4)),
-        dy: parseFloat((s.dy||0).toFixed(4)),
-        dz: parseFloat(s.dz.toFixed(4)),
-        rotY_deg: parseFloat(s.rotY.toFixed(2)),
+        dx: parseFloat(((s.baked_dx||0) + s.dx).toFixed(4)),
+        dy: parseFloat(((s.baked_dy||0) + (s.dy||0)).toFixed(4)),
+        dz: parseFloat(((s.baked_dz||0) + s.dz).toFixed(4)),
+        rotY_deg: parseFloat(((s.baked_rotY||0) + s.rotY).toFixed(2)),
       }
     }))
   };
@@ -613,6 +619,82 @@ document.getElementById('export-btn').addEventListener('click', () => {
 
 document.getElementById('close-modal').addEventListener('click', () => {
   document.getElementById('export-modal').classList.remove('visible');
+});
+
+// ── Export OBJ ─────────────────────────────────────────────────────────────
+document.getElementById('export-obj-btn').addEventListener('click', () => {
+  const lines = ['# ALM809P — Aligned merge export'];
+  let vOffset = 0, vtOffset = 0, vnOffset = 0;
+
+  for (const s of loadedScans) {
+    if (!s.obj) continue;
+
+    // Apply any pending (un-baked) transform first
+    s.obj.updateMatrixWorld(true);
+
+    lines.push(`# ${s.id} — ${s.name}`);
+
+    const vBuf = [], vtBuf = [], vnBuf = [], fBuf = [];
+
+    s.obj.traverse(child => {
+      if (!child.isMesh) return;
+      const geo = child.geometry;
+      const mat = child.matrixWorld;
+
+      const pos = geo.attributes.position;
+      const uv  = geo.attributes.uv;
+      const nor = geo.attributes.normal;
+
+      // Vertices (world space)
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+        // Apply world matrix manually
+        const wx = mat.elements[0]*x + mat.elements[4]*y + mat.elements[8]*z  + mat.elements[12];
+        const wy = mat.elements[1]*x + mat.elements[5]*y + mat.elements[9]*z  + mat.elements[13];
+        const wz = mat.elements[2]*x + mat.elements[6]*y + mat.elements[10]*z + mat.elements[14];
+        vBuf.push(`v ${wx.toFixed(5)} ${wy.toFixed(5)} ${wz.toFixed(5)}`);
+      }
+      // UVs
+      if (uv) for (let i = 0; i < uv.count; i++)
+        vtBuf.push(`vt ${uv.getX(i).toFixed(5)} ${uv.getY(i).toFixed(5)}`);
+      // Normals
+      if (nor) for (let i = 0; i < nor.count; i++) {
+        const nx = nor.getX(i), ny = nor.getY(i), nz = nor.getZ(i);
+        const wnx = mat.elements[0]*nx + mat.elements[4]*ny + mat.elements[8]*nz;
+        const wny = mat.elements[1]*nx + mat.elements[5]*ny + mat.elements[9]*nz;
+        const wnz = mat.elements[2]*nx + mat.elements[6]*ny + mat.elements[10]*nz;
+        vnBuf.push(`vn ${wnx.toFixed(5)} ${wny.toFixed(5)} ${wnz.toFixed(5)}`);
+      }
+      // Faces
+      fBuf.push(`g ${s.id}`);
+      const idx = geo.index;
+      if (idx) {
+        for (let i = 0; i < idx.count; i += 3) {
+          const a = idx.getX(i)+1+vOffset, b = idx.getX(i+1)+1+vOffset, c = idx.getX(i+2)+1+vOffset;
+          const ta = idx.getX(i)+1+vtOffset, tb = idx.getX(i+1)+1+vtOffset, tc = idx.getX(i+2)+1+vtOffset;
+          const na = idx.getX(i)+1+vnOffset, nb = idx.getX(i+1)+1+vnOffset, nc = idx.getX(i+2)+1+vnOffset;
+          if (uv && nor) fBuf.push(`f ${a}/${ta}/${na} ${b}/${tb}/${nb} ${c}/${tc}/${nc}`);
+          else if (uv)   fBuf.push(`f ${a}/${ta} ${b}/${tb} ${c}/${tc}`);
+          else if (nor)  fBuf.push(`f ${a}//${na} ${b}//${nb} ${c}//${nc}`);
+          else           fBuf.push(`f ${a} ${b} ${c}`);
+        }
+      }
+      vOffset  += pos.count;
+      if (uv)  vtOffset += uv.count;
+      if (nor) vnOffset += nor.count;
+    });
+
+    lines.push(...vBuf, ...vtBuf, ...vnBuf, ...fBuf);
+  }
+
+  const blob = new Blob([lines.join('\n')], {type:'text/plain'});
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const group = document.getElementById('group-select').value || 'export';
+  a.download = `ALM809P_${group}_aligned.obj`;
+  a.click();
+  URL.revokeObjectURL(url);
 });
 
 document.getElementById('copy-btn').addEventListener('click', () => {
