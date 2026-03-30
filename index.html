@@ -104,14 +104,11 @@ scene.add(new THREE.HemisphereLight(0x8090b0, 0x303040, 0.4));
 scene.add(new THREE.GridHelper(80, 40, 0x1a1a1a, 0x141414));
 
 // Floor colors (individual mode = neutral, full mode = per-floor color)
-// OBJs over 100MB are served from GitHub Releases (can't live in Pages directly)
-const RELEASE_BASE = 'https://github.com/zxy-vc/baw-viewer/releases/download/v1.0-scans';
-const OBJ_URLS = {
-  'N-1_Estacionamiento': `${RELEASE_BASE}/N-1_Estacionamiento_aligned.obj`,
+// Some floors are split into multiple OBJ parts (to stay under 100MB GitHub limit)
+const OBJ_PARTS = {
+  'N-1_Estacionamiento': ['N-1_Estacionamiento_p1.obj', 'N-1_Estacionamiento_p2.obj'],
 };
-function objUrl(name) {
-  return OBJ_URLS[name] || (name + '.obj');
-}
+function objUrl(name) { return name + '.obj'; }
 
 const FLOOR_COLORS_INDIVIDUAL = 0xd0c4b0;
 const FLOOR_COLORS_FULL = {
@@ -155,6 +152,26 @@ function hideLoading() {
   document.getElementById('loading').style.display = 'none';
 }
 
+// ── Helper: load one or more OBJ parts into a single Group ───────────────
+function loadObjParts(name, onDone, onError) {
+  const parts = OBJ_PARTS[name] || [objUrl(name)];
+  const group = new THREE.Group();
+  let loaded = 0;
+  parts.forEach((url, i) => {
+    new OBJLoader().load(url, (obj) => {
+      obj.traverse(c => { if (c.isMesh) c.userData.partObj = true; });
+      group.add(obj);
+      loaded++;
+      document.getElementById('prog').textContent = parts.length > 1
+        ? `Parte ${loaded}/${parts.length}…` : 'Cargando…';
+      if (loaded === parts.length) onDone(group);
+    }, (e) => {
+      if (e.total) document.getElementById('prog').textContent =
+        `${parts.length>1?`P${i+1} `:''}${Math.round(e.loaded/e.total*100)}%`;
+    }, onError);
+  });
+}
+
 // ── Single floor loader ──────────────────────────────────────────────────
 function loadSingle(name) {
   mode = 'single';
@@ -171,7 +188,7 @@ function loadSingle(name) {
   showLoading('Descargando…');
   if (singleObject) { scene.remove(singleObject); singleObject = null; }
 
-  new OBJLoader().load(objUrl(name), (obj) => {
+  loadObjParts(name, (obj) => {
     const box = new THREE.Box3().setFromObject(obj);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
@@ -201,8 +218,6 @@ function loadSingle(name) {
 
     if (wireMode) applyWireSingle(true);
     hideLoading();
-  }, (e) => {
-    if (e.total) document.getElementById('prog').textContent = Math.round(e.loaded/e.total*100)+'%';
   }, () => {
     document.getElementById('prog').textContent = 'Error cargando modelo';
   });
@@ -237,9 +252,8 @@ async function loadFullBuilding() {
     const checkVisible = document.querySelector(`.floor-toggle[data-scan="${name}"] input`);
     if (checkVisible && !checkVisible.checked) { resolve(); return; }
 
-    loader.load(objUrl(name), (obj) => {
+    loadObjParts(name, (obj) => {
       const box = new THREE.Box3().setFromObject(obj);
-      const size = box.getSize(new THREE.Vector3());
 
       // Step 1: normalize — move floor to Y=0, center on XZ origin
       const cx = (box.min.x + box.max.x) / 2;
@@ -265,7 +279,7 @@ async function loadFullBuilding() {
       // Mark toggle as loaded
       document.querySelector(`.floor-toggle[data-scan="${name}"]`)?.classList.add('loaded');
       resolve();
-    }, undefined, () => { resolve(); });
+    }, () => { resolve(); });
   }));
 
   await Promise.all(promises);
@@ -294,7 +308,7 @@ document.querySelectorAll('.floor-toggle').forEach(toggle => {
       if (!floorObjects[name]) {
         // Load on demand
         showLoading('Cargando piso…');
-        new OBJLoader().load(objUrl(name), (obj) => {
+        loadObjParts(name, (obj) => {
           const box = new THREE.Box3().setFromObject(obj);
           const cx = (box.min.x + box.max.x)/2;
           const cz = (box.min.z + box.max.z)/2;
@@ -308,7 +322,7 @@ document.querySelectorAll('.floor-toggle').forEach(toggle => {
           scene.add(obj);
           if (wireMode) applyWireObj(obj, true);
           hideLoading();
-        }, undefined, hideLoading);
+        }, hideLoading);
       } else {
         floorObjects[name].visible = true;
       }
