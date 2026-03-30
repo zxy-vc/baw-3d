@@ -82,7 +82,7 @@ body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;displ
     <select id="group-select">
       <option value="">— Elige un grupo —</option>
       <optgroup label="N-1 · Estacionamiento">
-        <option value="estacionamiento">Estacionamiento (S26, S27, S29, S30)</option>
+        <option value="estacionamiento">Estacionamiento (S25–S32, 8 scans)</option>
       </optgroup>
       <optgroup label="N0 · Planta Baja">
         <option value="pb-vestibulo-fachada">Vestíbulo + Fachada (S01, S02)</option>
@@ -156,10 +156,14 @@ const BASE = 'https://media.githubusercontent.com/media/zxy-vc/baw-viewer/main/s
 
 const CATALOG = {
   estacionamiento: [
+    { id:'S25', folder:'S25_N-1_E_P1', name:'Estacionamiento P1' },
     { id:'S26', folder:'S26_N-1_E_P2', name:'Estacionamiento P2' },
     { id:'S27', folder:'S27_N-1_E_P3', name:'Estacionamiento P3' },
+    { id:'S28', folder:'S28_N-1_E_P4', name:'Estacionamiento P4' },
     { id:'S29', folder:'S29_N-1_E_P5', name:'Estacionamiento P5' },
     { id:'S30', folder:'S30_N-1_E_P6', name:'Estacionamiento P6' },
+    { id:'S31', folder:'S31_N-1_E_P7', name:'Estacionamiento P7' },
+    { id:'S32', folder:'S32_N-1_E_P8', name:'Estacionamiento P8' },
   ],
   'pb-vestibulo-fachada': [
     { id:'S01', folder:'S01_N0_Vestibulo',  name:'Vestíbulo' },
