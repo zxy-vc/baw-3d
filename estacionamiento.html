@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ALM809P — N-1 Estacionamiento | BaW Lab</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;display:flex;height:100vh;overflow:hidden}
+#sidebar{width:190px;background:#111;border-right:1px solid #1e1e1e;padding:12px;flex-shrink:0;display:flex;flex-direction:column;gap:6px}
+#sidebar h2{font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
+.scan-btn{display:block;width:100%;text-align:left;padding:7px 10px;background:#1a1a1a;border:1px solid #242424;color:#888;border-radius:5px;cursor:pointer;font-size:11px;transition:all .12s}
+.scan-btn:hover{background:#1e1e1e;border-color:#333;color:#ccc}
+.scan-btn.active{background:#1a2f4f;border-color:#2563eb;color:#fff}
+.btn-all{background:#1a2a1a;border-color:#2a4a2a;color:#6a9a6a}
+.btn-all:hover{background:#1e2e1e;border-color:#3a6a3a;color:#8be08b}
+.btn-all.active{background:#1a3a1a;border-color:#3a8a3a;color:#8be08b}
+.divider{height:1px;background:#1e1e1e;margin:2px 0}
+#progress-bar{height:2px;background:#1a1a1a;border-radius:1px;overflow:hidden;margin-top:4px}
+#progress-fill{height:100%;background:#3b82f6;width:0%;transition:width .3s}
+#progress-text{font-size:9px;color:#333;margin-top:3px;text-align:center}
+#viewer{flex:1;position:relative}
+#loading{position:absolute;inset:0;background:rgba(0,0,0,.85);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:10}
+.spinner{width:36px;height:36px;border:3px solid #2a2a2a;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#prog{font-size:12px;color:#666;text-align:center;max-width:200px}
+#scan-name{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.7);padding:4px 10px;border-radius:4px;font-size:11px;color:#aaa}
+#controls{position:absolute;top:10px;right:10px;display:flex;gap:5px}
+.ctrl-btn{padding:4px 10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#aaa;border-radius:4px;cursor:pointer;font-size:11px}
+.ctrl-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+#status{position:absolute;bottom:8px;left:10px;font-size:10px;color:#333}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="sidebar">
+  <h2>N-1 Estacionamiento</h2>
+  <button class="scan-btn btn-all" id="btn-all">🏗 Todos los scans</button>
+  <div class="divider"></div>
+  <button class="scan-btn" data-scan="S25" data-folder="S25_N-1_E_P1">S25 · P1</button>
+  <button class="scan-btn" data-scan="S26" data-folder="S26_N-1_E_P2">S26 · P2</button>
+  <button class="scan-btn" data-scan="S27" data-folder="S27_N-1_E_P3">S27 · P3</button>
+  <button class="scan-btn" data-scan="S28" data-folder="S28_N-1_E_P4">S28 · P4</button>
+  <button class="scan-btn" data-scan="S29" data-folder="S29_N-1_E_P5">S29 · P5</button>
+  <button class="scan-btn" data-scan="S30" data-folder="S30_N-1_E_P6">S30 · P6</button>
+  <button class="scan-btn" data-scan="S31" data-folder="S31_N-1_E_P7">S31 · P7</button>
+  <button class="scan-btn" data-scan="S32" data-folder="S32_N-1_E_P8">S32 · P8</button>
+  <div id="progress-bar"><div id="progress-fill"></div></div>
+  <div id="progress-text"></div>
+</div>
+<div id="viewer">
+  <div id="scan-name">← Selecciona un scan o "Todos"</div>
+  <div id="controls">
+    <button class="ctrl-btn" id="resetCam">Reset</button>
+    <button class="ctrl-btn" id="wireBtn">Wireframe</button>
+  </div>
+  <div id="loading"><div class="spinner"></div><div id="prog">Cargando…</div></div>
+  <div id="status">🖱 Orbitar: click+drag · Zoom: scroll · Pan: shift+drag</div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+
+const BASE = 'https://media.githubusercontent.com/media/zxy-vc/baw-viewer/main/scans';
+
+// Final alignment v3 (Fran, 2026-03-30)
+const ALIGNMENT = {
+  S25: { dx:0,     dy:0,    dz:0,     rotY:0,      isRef:true  },
+  S26: { dx:1.7,   dy:0.3,  dz:8.6,   rotY:-167,   isRef:false },
+  S27: { dx:15.75, dy:0.4,  dz:-10.1, rotY:7.5,    isRef:false },
+  S28: { dx:-2.7,  dy:0.4,  dz:14.6,  rotY:-81.5,  isRef:false },
+  S29: { dx:20.35, dy:0.4,  dz:8.2,   rotY:-171,   isRef:false },
+  S30: { dx:19.35, dy:0.35, dz:8.5,   rotY:-80,    isRef:false },
+  S31: { dx:-3.05, dy:0,    dz:-9.7,  rotY:95,     isRef:false },
+  S32: { dx:-4.4,  dy:0.25, dz:-7.6,  rotY:8.5,    isRef:false },
+};
+
+const SCANS = [
+  {id:'S25',folder:'S25_N-1_E_P1'},
+  {id:'S26',folder:'S26_N-1_E_P2'},
+  {id:'S27',folder:'S27_N-1_E_P3'},
+  {id:'S28',folder:'S28_N-1_E_P4'},
+  {id:'S29',folder:'S29_N-1_E_P5'},
+  {id:'S30',folder:'S30_N-1_E_P6'},
+  {id:'S31',folder:'S31_N-1_E_P7'},
+  {id:'S32',folder:'S32_N-1_E_P8'},
+];
+
+// ── Three.js ──────────────────────────────────────────────────────────────
+const viewerEl = document.getElementById('viewer');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setSize(viewerEl.clientWidth, viewerEl.clientHeight);
+viewerEl.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a0a);
+
+const camera = new THREE.PerspectiveCamera(60, viewerEl.clientWidth/viewerEl.clientHeight, 0.01, 500);
+camera.position.set(15, 10, 25);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.07;
+
+scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+const dir = new THREE.DirectionalLight(0xffffff, 0.5);
+dir.position.set(5, 10, 5); scene.add(dir);
+scene.add(new THREE.GridHelper(80, 40, 0x1a1a1a, 0x141414));
+
+let loadedObjects = {}; // id → THREE.Group
+let wireMode = false;
+let defPos, defTarget;
+
+// ── Apply alignment transform ─────────────────────────────────────────────
+function applyAlignment(obj, id) {
+  const a = ALIGNMENT[id];
+  if (!a) return;
+  const box = new THREE.Box3().setFromObject(obj);
+  const minY = box.min.y;
+  obj.position.y = -minY + a.dy;
+  if (a.isRef) {
+    const cx = (box.min.x + box.max.x)/2;
+    const cz = (box.min.z + box.max.z)/2;
+    obj.position.x = -cx;
+    obj.position.z = -cz;
+  } else {
+    obj.rotation.y = a.rotY * Math.PI / 180;
+    obj.position.x = a.dx;
+    obj.position.z = a.dz;
+  }
+}
+
+// ── Load single scan with MTL+textures ───────────────────────────────────
+function loadScan(scanId, folder) {
+  return new Promise((resolve) => {
+    if (loadedObjects[scanId]) { resolve(loadedObjects[scanId]); return; }
+    const basePath = `${BASE}/${folder}/`;
+    const mtlLoader = new MTLLoader();
+    mtlLoader.setPath(basePath);
+    mtlLoader.load('ReprocessedMesh.mtl', (materials) => {
+      materials.preload();
+      const objLoader = new OBJLoader();
+      objLoader.setMaterials(materials);
+      objLoader.load(`${basePath}ReprocessedMesh.obj`, (obj) => {
+        applyAlignment(obj, scanId);
+        // Enable texture filtering
+        obj.traverse(c => {
+          if (!c.isMesh) return;
+          const mats = Array.isArray(c.material) ? c.material : [c.material];
+          mats.forEach(m => {
+            m.side = THREE.DoubleSide;
+            if (m.map) { m.map.anisotropy = renderer.capabilities.getMaxAnisotropy(); m.map.needsUpdate = true; }
+          });
+        });
+        loadedObjects[scanId] = obj;
+        resolve(obj);
+      }, undefined, () => {
+        // MTL failed — fallback plain OBJ
+        new OBJLoader().load(`${basePath}ReprocessedMesh.obj`, (obj) => {
+          applyAlignment(obj, scanId);
+          obj.traverse(c => { if(c.isMesh) c.material = new THREE.MeshLambertMaterial({color:0xcccccc, side:THREE.DoubleSide}); });
+          loadedObjects[scanId] = obj;
+          resolve(obj);
+        }, undefined, () => resolve(null));
+      });
+    }, undefined, () => {
+      new OBJLoader().load(`${basePath}ReprocessedMesh.obj`, (obj) => {
+        applyAlignment(obj, scanId);
+        obj.traverse(c => { if(c.isMesh) c.material = new THREE.MeshLambertMaterial({color:0xcccccc, side:THREE.DoubleSide}); });
+        loadedObjects[scanId] = obj;
+        resolve(obj);
+      }, undefined, () => resolve(null));
+    });
+  });
+}
+
+// ── Clear scene objects ───────────────────────────────────────────────────
+function clearScene() {
+  Object.values(loadedObjects).forEach(o => { if(o.parent) scene.remove(o); });
+}
+
+// ── Show single scan ──────────────────────────────────────────────────────
+async function showSingle(scanId, folder) {
+  clearScene();
+  document.querySelectorAll('.scan-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-scan="${scanId}"]`)?.classList.add('active');
+  document.getElementById('scan-name').textContent = `${scanId} · ${folder.replace(/_/g,' ')}`;
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('prog').textContent = 'Cargando scan + texturas…';
+
+  const obj = await loadScan(scanId, folder);
+  if (obj) {
+    scene.add(obj);
+    const box = new THREE.Box3().setFromObject(obj);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const d = Math.max(size.x, size.y, size.z) * 1.4;
+    camera.position.set(center.x+d, center.y+d*0.6, center.z+d);
+    controls.target.copy(center); controls.update();
+    defPos = camera.position.clone(); defTarget = controls.target.clone();
+    if (wireMode) applyWireObj(obj, true);
+  }
+  document.getElementById('loading').style.display = 'none';
+}
+
+// ── Show all scans ────────────────────────────────────────────────────────
+async function showAll() {
+  clearScene();
+  document.querySelectorAll('.scan-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-all').classList.add('active');
+  document.getElementById('scan-name').textContent = 'Todos los scans — N-1 Estacionamiento';
+  document.getElementById('loading').style.display = 'flex';
+
+  const fill = document.getElementById('progress-fill');
+  const txt  = document.getElementById('progress-text');
+  let done = 0;
+
+  for (const {id, folder} of SCANS) {
+    document.getElementById('prog').textContent = `Cargando ${id} (${done+1}/${SCANS.length})…`;
+    const obj = await loadScan(id, folder);
+    if (obj) { scene.add(obj); if (wireMode) applyWireObj(obj, true); }
+    done++;
+    fill.style.width = (done/SCANS.length*100)+'%';
+    txt.textContent  = `${done}/${SCANS.length} scans`;
+  }
+
+  // Frame all
+  const box = new THREE.Box3();
+  Object.values(loadedObjects).forEach(o => { if(o.parent) box.expandByObject(o); });
+  if (!box.isEmpty()) {
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const d = Math.max(size.x, size.z) * 1.6;
+    camera.position.set(center.x+d*0.6, center.y+d*0.5, center.z+d);
+    controls.target.copy(center); controls.update();
+    defPos = camera.position.clone(); defTarget = controls.target.clone();
+  }
+  document.getElementById('loading').style.display = 'none';
+}
+
+// ── Wireframe ─────────────────────────────────────────────────────────────
+function applyWireObj(obj, on) {
+  obj.traverse(c => {
+    if (!c.isMesh) return;
+    if (on) { c.userData._m = c.material; c.material = new THREE.MeshBasicMaterial({color:0x3b82f6,wireframe:true}); }
+    else if (c.userData._m) c.material = c.userData._m;
+  });
+}
+
+document.getElementById('wireBtn').addEventListener('click', () => {
+  wireMode = !wireMode;
+  Object.values(loadedObjects).forEach(o => { if(o.parent) applyWireObj(o, wireMode); });
+  document.getElementById('wireBtn').textContent = wireMode ? 'Sólido' : 'Wireframe';
+});
+document.getElementById('resetCam').addEventListener('click', () => {
+  if (defPos) { camera.position.copy(defPos); controls.target.copy(defTarget); controls.update(); }
+});
+
+// ── Button events ─────────────────────────────────────────────────────────
+document.getElementById('btn-all').addEventListener('click', showAll);
+document.querySelectorAll('.scan-btn[data-scan]').forEach(btn => {
+  btn.addEventListener('click', () => showSingle(btn.dataset.scan, btn.dataset.folder));
+});
+
+// ── Resize / animate ──────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = viewerEl.clientWidth/viewerEl.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(viewerEl.clientWidth, viewerEl.clientHeight);
+});
+(function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene,camera); })();
+</script>
+</body>
+</html>
