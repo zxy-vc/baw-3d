@@ -66,11 +66,13 @@ body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;displ
     </div>
     <div id="clip-controls" style="display:none;flex-direction:column;gap:4px">
       <div class="clip-row">
-        <span class="clip-label">✂ Techo Y</span>
+        <button class="ctrl-btn" id="flipY" style="padding:2px 7px;font-size:10px" title="Invertir dirección del corte Y">⇅</button>
+        <span class="clip-label" id="clipYLabel">✂ Techo</span>
         <input type="range" class="clip-slider" id="clipY" min="-2" max="8" step="0.1" value="8">
         <span class="clip-val" id="clipYVal">8.0</span>
       </div>
       <div class="clip-row">
+        <button class="ctrl-btn" id="flipWall" style="padding:2px 7px;font-size:10px" title="Invertir dirección del corte de pared">⇅</button>
         <span class="clip-label">↔ Pared</span>
         <input type="range" class="clip-slider" id="clipDepth" min="-15" max="15" step="0.2" value="4">
         <span class="clip-val" id="clipDepthVal">4.0</span>
@@ -282,11 +284,13 @@ document.getElementById('wireBtn').addEventListener('click', () => {
 // ── Clipping planes ───────────────────────────────────────────────────────
 // Plane 1: horizontal fixed — clips ceiling at Y height
 // Plane 2: vertical dynamic — clips wall facing camera (XZ only, never tilted)
-const clipPlaneY   = new THREE.Plane(new THREE.Vector3(0, -1, 0), 8); // ceiling
-const clipPlaneWall = new THREE.Plane(new THREE.Vector3(0, 0, -1), 4); // wall (updated per frame)
+const clipPlaneY    = new THREE.Plane(new THREE.Vector3(0, -1, 0), 8);
+const clipPlaneWall = new THREE.Plane(new THREE.Vector3(0, 0, -1), 4);
 let clippingActive = false;
 let clipYLevel = 8;
 let clipDepthOffset = 4;
+let clipYDir = -1;    // -1 = cuts ceiling (clips above), +1 = cuts floor (clips below)
+let clipWallDir = -1; // -1 = cuts front wall, +1 = cuts back wall
 
 function setClipping(active) {
   clippingActive = active;
@@ -299,23 +303,22 @@ function setClipping(active) {
 function updateDynClip() {
   if (!clippingActive) return;
 
-  // Ceiling plane: fixed horizontal, adjustable Y
-  clipPlaneY.constant = clipYLevel;
+  // Horizontal plane: normal flips based on clipYDir
+  clipPlaneY.normal.set(0, clipYDir, 0);
+  clipPlaneY.constant = clipYDir > 0 ? -clipYLevel : clipYLevel;
 
-  // Wall plane: camera direction projected onto XZ plane only (no Y tilt)
-  const camDir = new THREE.Vector3()
-    .subVectors(camera.position, controls.target);
-  camDir.y = 0; // flatten to horizontal — no diagonal cut
+  // Wall plane: XZ only, direction flipped by clipWallDir
+  const camDir = new THREE.Vector3().subVectors(camera.position, controls.target);
+  camDir.y = 0;
   if (camDir.lengthSq() < 0.0001) return;
   camDir.normalize();
 
-  // Normal points FROM scene TOWARD camera (XZ only)
-  clipPlaneWall.normal.copy(camDir).negate();
-
-  // Plane position: offset from scene center toward camera by slider amount
+  // clipWallDir: -1 = clip front (facing camera), +1 = clip back (away from camera)
+  const wallNormal = camDir.clone().multiplyScalar(clipWallDir);
+  clipPlaneWall.normal.copy(wallNormal).negate();
   const planePoint = new THREE.Vector3()
     .copy(controls.target)
-    .addScaledVector(camDir, clipDepthOffset);
+    .addScaledVector(camDir, clipDepthOffset * clipWallDir);
   clipPlaneWall.constant = -clipPlaneWall.normal.dot(planePoint);
 }
 
@@ -325,10 +328,23 @@ document.getElementById('clipY').addEventListener('input', e => {
   clipYLevel = parseFloat(e.target.value);
   document.getElementById('clipYVal').textContent = clipYLevel.toFixed(1);
 });
-
 document.getElementById('clipDepth').addEventListener('input', e => {
   clipDepthOffset = parseFloat(e.target.value);
   document.getElementById('clipDepthVal').textContent = clipDepthOffset.toFixed(1);
+});
+
+// Flip Y: toggle between cutting ceiling vs floor
+document.getElementById('flipY').addEventListener('click', () => {
+  clipYDir *= -1;
+  const label = document.getElementById('clipYLabel');
+  label.textContent = clipYDir < 0 ? '✂ Techo' : '✂ Piso';
+  document.getElementById('flipY').style.color = clipYDir < 0 ? '#aaa' : '#f87171';
+});
+
+// Flip Wall: toggle between front wall vs back wall
+document.getElementById('flipWall').addEventListener('click', () => {
+  clipWallDir *= -1;
+  document.getElementById('flipWall').style.color = clipWallDir < 0 ? '#aaa' : '#f87171';
 });
 document.getElementById('resetCam').addEventListener('click', () => {
   if (defPos) { camera.position.copy(defPos); controls.target.copy(defTarget); controls.update(); }
