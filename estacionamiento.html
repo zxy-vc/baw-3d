@@ -66,19 +66,9 @@ body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;displ
     </div>
     <div id="clip-controls" style="display:none">
       <div class="clip-row">
-        <span class="clip-label">Techo Y</span>
-        <input type="range" class="clip-slider" id="clipY" min="-2" max="8" step="0.1" value="8">
-        <span class="clip-val" id="clipYval">8.0</span>
-      </div>
-      <div class="clip-row">
-        <span class="clip-label">Frente Z</span>
-        <input type="range" class="clip-slider" id="clipZ" min="-30" max="30" step="0.5" value="30">
-        <span class="clip-val" id="clipZval">30.0</span>
-      </div>
-      <div class="clip-row">
-        <span class="clip-label">Lado X</span>
-        <input type="range" class="clip-slider" id="clipX" min="-30" max="30" step="0.5" value="30">
-        <span class="clip-val" id="clipXval">30.0</span>
+        <span class="clip-label">Profundidad</span>
+        <input type="range" class="clip-slider" id="clipDepth" min="-15" max="15" step="0.2" value="0">
+        <span class="clip-val" id="clipDepthVal">0.0</span>
       </div>
     </div>
   </div>
@@ -284,36 +274,39 @@ document.getElementById('wireBtn').addEventListener('click', () => {
   document.getElementById('wireBtn').textContent = wireMode ? 'Sólido' : 'Wireframe';
 });
 
-// ── Clipping planes ───────────────────────────────────────────────────────
-const clipPlaneY = new THREE.Plane(new THREE.Vector3(0, -1, 0), 8);  // techo
-const clipPlaneZ = new THREE.Plane(new THREE.Vector3(0, 0, -1), 30); // frente
-const clipPlaneX = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 30); // lado
+// ── Dynamic camera-oriented clipping ─────────────────────────────────────
+// One plane that always faces FROM the camera TOWARD the scene center.
+// As you orbit, the plane rotates with you — walls facing you disappear,
+// walls behind you become visible. Slider controls cut depth.
+const dynClipPlane = new THREE.Plane();
 let clippingActive = false;
+let clipDepthOffset = 0;
 
 function setClipping(active) {
   clippingActive = active;
-  renderer.clippingPlanes = active ? [clipPlaneY, clipPlaneZ, clipPlaneX] : [];
+  renderer.clippingPlanes = active ? [dynClipPlane] : [];
   renderer.localClippingEnabled = active;
   document.getElementById('clipToggle').classList.toggle('active', active);
-  document.getElementById('clip-controls').style.display = active ? 'block' : 'none';
+  document.getElementById('clip-controls').style.display = active ? 'flex' : 'none';
+}
+
+function updateDynClip() {
+  if (!clippingActive) return;
+  // Direction from scene center to camera
+  const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+  // Plane normal points FROM camera TOWARD scene (opposite direction)
+  dynClipPlane.normal.copy(dir).negate();
+  // Plane passes through a point between camera and center, offset by slider
+  const midpoint = new THREE.Vector3().lerpVectors(controls.target, camera.position, 0.35);
+  midpoint.addScaledVector(dir, clipDepthOffset);
+  dynClipPlane.constant = -dynClipPlane.normal.dot(midpoint);
 }
 
 document.getElementById('clipToggle').addEventListener('click', () => setClipping(!clippingActive));
 
-document.getElementById('clipY').addEventListener('input', e => {
-  const v = parseFloat(e.target.value);
-  clipPlaneY.constant = v;
-  document.getElementById('clipYval').textContent = v.toFixed(1);
-});
-document.getElementById('clipZ').addEventListener('input', e => {
-  const v = parseFloat(e.target.value);
-  clipPlaneZ.constant = v;
-  document.getElementById('clipZval').textContent = v.toFixed(1);
-});
-document.getElementById('clipX').addEventListener('input', e => {
-  const v = parseFloat(e.target.value);
-  clipPlaneX.constant = v;
-  document.getElementById('clipXval').textContent = v.toFixed(1);
+document.getElementById('clipDepth').addEventListener('input', e => {
+  clipDepthOffset = parseFloat(e.target.value);
+  document.getElementById('clipDepthVal').textContent = clipDepthOffset.toFixed(1);
 });
 document.getElementById('resetCam').addEventListener('click', () => {
   if (defPos) { camera.position.copy(defPos); controls.target.copy(defTarget); controls.update(); }
@@ -331,7 +324,12 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(viewerEl.clientWidth, viewerEl.clientHeight);
 });
-(function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene,camera); })();
+(function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  updateDynClip();
+  renderer.render(scene, camera);
+})();
 </script>
 </body>
 </html>
