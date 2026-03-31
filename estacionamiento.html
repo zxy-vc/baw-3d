@@ -64,11 +64,16 @@ body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;displ
       <button class="ctrl-btn" id="wireBtn">Wireframe</button>
       <button class="ctrl-btn" id="clipToggle">✂ Corte</button>
     </div>
-    <div id="clip-controls" style="display:none">
+    <div id="clip-controls" style="display:none;flex-direction:column;gap:4px">
       <div class="clip-row">
-        <span class="clip-label">Profundidad</span>
-        <input type="range" class="clip-slider" id="clipDepth" min="-15" max="15" step="0.2" value="0">
-        <span class="clip-val" id="clipDepthVal">0.0</span>
+        <span class="clip-label">✂ Techo Y</span>
+        <input type="range" class="clip-slider" id="clipY" min="-2" max="8" step="0.1" value="8">
+        <span class="clip-val" id="clipYVal">8.0</span>
+      </div>
+      <div class="clip-row">
+        <span class="clip-label">↔ Pared</span>
+        <input type="range" class="clip-slider" id="clipDepth" min="-15" max="15" step="0.2" value="4">
+        <span class="clip-val" id="clipDepthVal">4.0</span>
       </div>
     </div>
   </div>
@@ -274,17 +279,18 @@ document.getElementById('wireBtn').addEventListener('click', () => {
   document.getElementById('wireBtn').textContent = wireMode ? 'Sólido' : 'Wireframe';
 });
 
-// ── Dynamic camera-oriented clipping ─────────────────────────────────────
-// One plane that always faces FROM the camera TOWARD the scene center.
-// As you orbit, the plane rotates with you — walls facing you disappear,
-// walls behind you become visible. Slider controls cut depth.
-const dynClipPlane = new THREE.Plane();
+// ── Clipping planes ───────────────────────────────────────────────────────
+// Plane 1: horizontal fixed — clips ceiling at Y height
+// Plane 2: vertical dynamic — clips wall facing camera (XZ only, never tilted)
+const clipPlaneY   = new THREE.Plane(new THREE.Vector3(0, -1, 0), 8); // ceiling
+const clipPlaneWall = new THREE.Plane(new THREE.Vector3(0, 0, -1), 4); // wall (updated per frame)
 let clippingActive = false;
-let clipDepthOffset = 0;
+let clipYLevel = 8;
+let clipDepthOffset = 4;
 
 function setClipping(active) {
   clippingActive = active;
-  renderer.clippingPlanes = active ? [dynClipPlane] : [];
+  renderer.clippingPlanes = active ? [clipPlaneY, clipPlaneWall] : [];
   renderer.localClippingEnabled = active;
   document.getElementById('clipToggle').classList.toggle('active', active);
   document.getElementById('clip-controls').style.display = active ? 'flex' : 'none';
@@ -292,17 +298,33 @@ function setClipping(active) {
 
 function updateDynClip() {
   if (!clippingActive) return;
-  // Direction from scene center to camera
-  const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
-  // Plane normal points FROM camera TOWARD scene (opposite direction)
-  dynClipPlane.normal.copy(dir).negate();
-  // Plane passes through a point between camera and center, offset by slider
-  const midpoint = new THREE.Vector3().lerpVectors(controls.target, camera.position, 0.35);
-  midpoint.addScaledVector(dir, clipDepthOffset);
-  dynClipPlane.constant = -dynClipPlane.normal.dot(midpoint);
+
+  // Ceiling plane: fixed horizontal, adjustable Y
+  clipPlaneY.constant = clipYLevel;
+
+  // Wall plane: camera direction projected onto XZ plane only (no Y tilt)
+  const camDir = new THREE.Vector3()
+    .subVectors(camera.position, controls.target);
+  camDir.y = 0; // flatten to horizontal — no diagonal cut
+  if (camDir.lengthSq() < 0.0001) return;
+  camDir.normalize();
+
+  // Normal points FROM scene TOWARD camera (XZ only)
+  clipPlaneWall.normal.copy(camDir).negate();
+
+  // Plane position: offset from scene center toward camera by slider amount
+  const planePoint = new THREE.Vector3()
+    .copy(controls.target)
+    .addScaledVector(camDir, clipDepthOffset);
+  clipPlaneWall.constant = -clipPlaneWall.normal.dot(planePoint);
 }
 
 document.getElementById('clipToggle').addEventListener('click', () => setClipping(!clippingActive));
+
+document.getElementById('clipY').addEventListener('input', e => {
+  clipYLevel = parseFloat(e.target.value);
+  document.getElementById('clipYVal').textContent = clipYLevel.toFixed(1);
+});
 
 document.getElementById('clipDepth').addEventListener('input', e => {
   clipDepthOffset = parseFloat(e.target.value);
