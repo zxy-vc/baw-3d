@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ALM809P — N1 Primer Piso | BaW Lab</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;display:flex;height:100vh;overflow:hidden}
+#sidebar{width:190px;background:#111;border-right:1px solid #1e1e1e;padding:12px;flex-shrink:0;display:flex;flex-direction:column;gap:6px}
+#sidebar h2{font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
+.scan-btn{display:block;width:100%;text-align:left;padding:7px 10px;background:#1a1a1a;border:1px solid #242424;color:#888;border-radius:5px;cursor:pointer;font-size:11px;transition:all .12s}
+.scan-btn:hover{background:#1e1e1e;border-color:#333;color:#ccc}
+.scan-btn.active{background:#1a2f4f;border-color:#2563eb;color:#fff}
+.btn-all{background:#1a2a1a;border-color:#2a4a2a;color:#6a9a6a}
+.btn-all:hover{background:#1e2e1e;border-color:#3a6a3a;color:#8be08b}
+.btn-all.active{background:#1a3a1a;border-color:#3a8a3a;color:#8be08b}
+.divider{height:1px;background:#1e1e1e;margin:2px 0}
+#progress-bar{height:2px;background:#1a1a1a;border-radius:1px;overflow:hidden;margin-top:4px}
+#progress-fill{height:100%;background:#3b82f6;width:0%;transition:width .3s}
+#progress-text{font-size:9px;color:#333;margin-top:3px;text-align:center}
+#viewer{flex:1;position:relative}
+#loading{position:absolute;inset:0;background:rgba(0,0,0,.85);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:10}
+.spinner{width:36px;height:36px;border:3px solid #2a2a2a;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#prog{font-size:12px;color:#666;text-align:center;max-width:200px}
+#scan-name{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.7);padding:4px 10px;border-radius:4px;font-size:11px;color:#aaa}
+#controls{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+.ctrl-row{display:flex;gap:5px}
+.ctrl-btn{padding:4px 10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#aaa;border-radius:4px;cursor:pointer;font-size:11px}
+.ctrl-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+.ctrl-btn.active{background:rgba(59,130,246,.2);border-color:#3b82f6;color:#60a5fa}
+.clip-row{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:4px;border:1px solid rgba(255,255,255,.08)}
+.clip-label{font-size:10px;color:#666;width:52px}
+.clip-slider{width:90px;accent-color:#3b82f6;cursor:pointer}
+.clip-val{font-size:10px;color:#555;width:32px;font-family:monospace;text-align:right}
+#status{position:absolute;bottom:8px;left:10px;font-size:10px;color:#333}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="sidebar">
+  <h2>N1 · Primer Piso</h2>
+  <button class="scan-btn btn-all" id="btn-all">🏗 Todos los scans</button>
+  <div class="divider"></div>
+  <button class="scan-btn" data-scan="S09" data-folder="S09_N1-N5_Escaleras_P2">S09 · Escaleras</button>
+  <button class="scan-btn" data-scan="S10" data-folder="S10_N1_Pasillo">S10 · Pasillo</button>
+  <button class="scan-btn" data-scan="S11" data-folder="S11_N1_D104">S11 · D104</button>
+  <button class="scan-btn" data-scan="S12" data-folder="S12_N1_D103_P1">S12 · D103 P1</button>
+  <button class="scan-btn" data-scan="S13" data-folder="S13_N1_D103_P2">S13 · D103 P2</button>
+  <button class="scan-btn" data-scan="S14" data-folder="S14_N1_Fachada_Exterior">S14 · Fachada Ext</button>
+  <button class="scan-btn" data-scan="S15" data-folder="S15_N1_D102_P1">S15 · D102 P1</button>
+  <button class="scan-btn" data-scan="S16" data-folder="S16_N1_D102_P2">S16 · D102 P2</button>
+  <button class="scan-btn" data-scan="S17" data-folder="S17_N1_D101_P1">S17 · D101 P1</button>
+  <button class="scan-btn" data-scan="S18" data-folder="S18_N1_D101_P2">S18 · D101 P2</button>
+  <div id="progress-bar"><div id="progress-fill"></div></div>
+  <div id="progress-text"></div>
+</div>
+<div id="viewer">
+  <div id="scan-name">← Selecciona un scan o "Todos"</div>
+  <div id="controls">
+    <div class="ctrl-row">
+      <button class="ctrl-btn" id="resetCam">Reset</button>
+      <button class="ctrl-btn" id="wireBtn">Wireframe</button>
+      <button class="ctrl-btn" id="clipToggle">✂ Corte</button>
+    </div>
+    <div id="clip-controls" style="display:none;flex-direction:column;gap:4px">
+      <div class="clip-row">
+        <button class="ctrl-btn" id="flipY" style="padding:2px 7px;font-size:10px">⇅</button>
+        <span class="clip-label" id="clipYLabel">✂ Techo</span>
+        <input type="range" class="clip-slider" id="clipY" min="-2" max="12" step="0.1" value="12">
+        <span class="clip-val" id="clipYVal">12.0</span>
+      </div>
+      <div class="clip-row">
+        <button class="ctrl-btn" id="flipWall" style="padding:2px 7px;font-size:10px">⇅</button>
+        <span class="clip-label">↔ Pared</span>
+        <input type="range" class="clip-slider" id="clipDepth" min="-15" max="15" step="0.2" value="4">
+        <span class="clip-val" id="clipDepthVal">4.0</span>
+      </div>
+    </div>
+  </div>
+  <div id="loading"><div class="spinner"></div><div id="prog">Cargando…</div></div>
+  <div id="status">🖱 Orbitar: click+drag · Zoom: scroll · Pan: shift+drag</div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+
+const BASE = 'https://media.githubusercontent.com/media/zxy-vc/baw-viewer/main/scans';
+
+// Alignment by Fran 2026-03-31
+const ALIGNMENT = {
+  S09: { dx:0,     dy:0,    dz:0,      rotY:0,     isRef:true  },
+  S10: { dx:-2.3,  dy:0.9,  dz:-3,     rotY:-89,   isRef:false },
+  S11: { dx:4.4,   dy:3.35, dz:2,      rotY:-88.5, isRef:false },
+  S12: { dx:16.35, dy:3.25, dz:-0.95,  rotY:180,   isRef:false },
+  S13: { dx:16.35, dy:3.25, dz:6.6,    rotY:-180,  isRef:false },
+  S14: { dx:9.05,  dy:0.65, dz:8.65,   rotY:1.5,   isRef:false },
+  S15: { dx:16.15, dy:3,    dz:-0.35,  rotY:-90,   isRef:false },
+  S16: { dx:21.35, dy:3.3,  dz:-10.55, rotY:0,     isRef:false },
+  S17: { dx:2.8,   dy:2.25, dz:-0.2,   rotY:0,     isRef:false },
+  S18: { dx:-2.3,  dy:2.7,  dz:-4.75,  rotY:-90,   isRef:false },
+};
+
+const SCANS = [
+  {id:'S09',folder:'S09_N1-N5_Escaleras_P2'},
+  {id:'S10',folder:'S10_N1_Pasillo'},
+  {id:'S11',folder:'S11_N1_D104'},
+  {id:'S12',folder:'S12_N1_D103_P1'},
+  {id:'S13',folder:'S13_N1_D103_P2'},
+  {id:'S14',folder:'S14_N1_Fachada_Exterior'},
+  {id:'S15',folder:'S15_N1_D102_P1'},
+  {id:'S16',folder:'S16_N1_D102_P2'},
+  {id:'S17',folder:'S17_N1_D101_P1'},
+  {id:'S18',folder:'S18_N1_D101_P2'},
+];
+
+const viewerEl = document.getElementById('viewer');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setSize(viewerEl.clientWidth, viewerEl.clientHeight);
+viewerEl.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a0a);
+
+const camera = new THREE.PerspectiveCamera(60, viewerEl.clientWidth/viewerEl.clientHeight, 0.01, 500);
+camera.position.set(10, 8, 20);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.07;
+
+scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+const dir = new THREE.DirectionalLight(0xffffff, 0.5);
+dir.position.set(5,10,5); scene.add(dir);
+scene.add(new THREE.GridHelper(60, 30, 0x1a1a1a, 0x141414));
+
+let loadedObjects = {}, wireMode = false, defPos, defTarget;
+
+function applyAlignment(obj, id) {
+  const a = ALIGNMENT[id]; if (!a) return;
+  const box = new THREE.Box3().setFromObject(obj);
+  obj.position.y = -box.min.y + a.dy;
+  if (a.isRef) {
+    obj.position.x = -((box.min.x+box.max.x)/2);
+    obj.position.z = -((box.min.z+box.max.z)/2);
+  } else {
+    obj.rotation.y = a.rotY * Math.PI/180;
+    obj.position.x = a.dx; obj.position.z = a.dz;
+  }
+}
+
+function loadScan(scanId, folder) {
+  return new Promise(resolve => {
+    if (loadedObjects[scanId]) { resolve(loadedObjects[scanId]); return; }
+    const base = `${BASE}/${folder}/`;
+    const mtl = new MTLLoader(); mtl.setPath(base);
+    mtl.load('ReprocessedMesh.mtl', mats => {
+      mats.preload();
+      const obj = new OBJLoader(); obj.setMaterials(mats);
+      obj.load(`${base}ReprocessedMesh.obj`, o => {
+        applyAlignment(o, scanId);
+        o.traverse(c => { if(!c.isMesh) return;
+          const ms = Array.isArray(c.material)?c.material:[c.material];
+          ms.forEach(m => { m.side=THREE.DoubleSide; if(m.map){m.map.anisotropy=renderer.capabilities.getMaxAnisotropy();m.map.needsUpdate=true;} });
+        });
+        loadedObjects[scanId]=o; resolve(o);
+      }, undefined, ()=>fallback(scanId,folder,resolve));
+    }, undefined, ()=>fallback(scanId,folder,resolve));
+  });
+}
+
+function fallback(scanId, folder, resolve) {
+  new OBJLoader().load(`${BASE}/${folder}/ReprocessedMesh.obj`, o => {
+    applyAlignment(o, scanId);
+    o.traverse(c=>{if(c.isMesh)c.material=new THREE.MeshLambertMaterial({color:0xcccccc,side:THREE.DoubleSide});});
+    loadedObjects[scanId]=o; resolve(o);
+  }, undefined, ()=>resolve(null));
+}
+
+function clearScene() { Object.values(loadedObjects).forEach(o=>{if(o.parent)scene.remove(o);}); }
+
+function frameAll() {
+  const box=new THREE.Box3();
+  Object.values(loadedObjects).forEach(o=>{if(o.parent)box.expandByObject(o);});
+  if(box.isEmpty()) return;
+  const size=box.getSize(new THREE.Vector3()), center=box.getCenter(new THREE.Vector3());
+  const d=Math.max(size.x,size.z)*1.6;
+  camera.position.set(center.x+d*0.6,center.y+d*0.5,center.z+d);
+  controls.target.copy(center); controls.update();
+  defPos=camera.position.clone(); defTarget=controls.target.clone();
+}
+
+async function showSingle(id, folder) {
+  clearScene();
+  document.querySelectorAll('.scan-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`[data-scan="${id}"]`)?.classList.add('active');
+  document.getElementById('scan-name').textContent=`${id} · ${folder.replace(/_/g,' ')}`;
+  document.getElementById('loading').style.display='flex';
+  document.getElementById('prog').textContent='Cargando scan + texturas…';
+  const o=await loadScan(id,folder);
+  if(o){scene.add(o); frameAll(); if(wireMode)applyWire(o,true);}
+  document.getElementById('loading').style.display='none';
+}
+
+async function showAll() {
+  clearScene();
+  document.querySelectorAll('.scan-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('btn-all').classList.add('active');
+  document.getElementById('scan-name').textContent='Todos — N1 Primer Piso';
+  document.getElementById('loading').style.display='flex';
+  const fill=document.getElementById('progress-fill'), txt=document.getElementById('progress-text');
+  let done=0;
+  for(const {id,folder} of SCANS){
+    document.getElementById('prog').textContent=`Cargando ${id} (${done+1}/${SCANS.length})…`;
+    const o=await loadScan(id,folder);
+    if(o){scene.add(o); if(wireMode)applyWire(o,true);}
+    done++; fill.style.width=(done/SCANS.length*100)+'%'; txt.textContent=`${done}/${SCANS.length} scans`;
+  }
+  frameAll();
+  document.getElementById('loading').style.display='none';
+}
+
+function applyWire(obj,on){obj.traverse(c=>{if(!c.isMesh)return;if(on){c.userData._m=c.material;c.material=new THREE.MeshBasicMaterial({color:0x3b82f6,wireframe:true});}else if(c.userData._m)c.material=c.userData._m;});}
+
+document.getElementById('wireBtn').addEventListener('click',()=>{wireMode=!wireMode;Object.values(loadedObjects).forEach(o=>{if(o.parent)applyWire(o,wireMode);});document.getElementById('wireBtn').textContent=wireMode?'Sólido':'Wireframe';});
+document.getElementById('resetCam').addEventListener('click',()=>{if(defPos){camera.position.copy(defPos);controls.target.copy(defTarget);controls.update();}});
+document.getElementById('btn-all').addEventListener('click',showAll);
+document.querySelectorAll('.scan-btn[data-scan]').forEach(btn=>btn.addEventListener('click',()=>showSingle(btn.dataset.scan,btn.dataset.folder)));
+
+// ── Clipping planes ───────────────────────────────────────────────────────
+const clipPlaneY=new THREE.Plane(new THREE.Vector3(0,-1,0),12);
+const clipPlaneWall=new THREE.Plane(new THREE.Vector3(0,0,-1),4);
+let clippingActive=false, clipYLevel=12, clipDepthOffset=4, clipYDir=-1, clipWallDir=-1;
+
+function setClipping(active){clippingActive=active;renderer.clippingPlanes=active?[clipPlaneY,clipPlaneWall]:[];renderer.localClippingEnabled=active;document.getElementById('clipToggle').classList.toggle('active',active);document.getElementById('clip-controls').style.display=active?'flex':'none';}
+
+function updateDynClip(){
+  if(!clippingActive)return;
+  clipPlaneY.normal.set(0,clipYDir,0); clipPlaneY.constant=clipYDir>0?-clipYLevel:clipYLevel;
+  const d=new THREE.Vector3().subVectors(camera.position,controls.target); d.y=0;
+  if(d.lengthSq()<0.0001)return; d.normalize();
+  clipPlaneWall.normal.copy(d).multiplyScalar(clipWallDir).negate();
+  const p=new THREE.Vector3().copy(controls.target).addScaledVector(d,clipDepthOffset*clipWallDir);
+  clipPlaneWall.constant=-clipPlaneWall.normal.dot(p);
+}
+
+document.getElementById('clipToggle').addEventListener('click',()=>setClipping(!clippingActive));
+document.getElementById('clipY').addEventListener('input',e=>{clipYLevel=parseFloat(e.target.value);document.getElementById('clipYVal').textContent=clipYLevel.toFixed(1);});
+document.getElementById('clipDepth').addEventListener('input',e=>{clipDepthOffset=parseFloat(e.target.value);document.getElementById('clipDepthVal').textContent=clipDepthOffset.toFixed(1);});
+document.getElementById('flipY').addEventListener('click',()=>{clipYDir*=-1;document.getElementById('clipYLabel').textContent=clipYDir<0?'✂ Techo':'✂ Piso';document.getElementById('flipY').style.color=clipYDir<0?'#aaa':'#f87171';});
+document.getElementById('flipWall').addEventListener('click',()=>{clipWallDir*=-1;document.getElementById('flipWall').style.color=clipWallDir<0?'#aaa':'#f87171';});
+
+window.addEventListener('resize',()=>{camera.aspect=viewerEl.clientWidth/viewerEl.clientHeight;camera.updateProjectionMatrix();renderer.setSize(viewerEl.clientWidth,viewerEl.clientHeight);});
+(function animate(){requestAnimationFrame(animate);controls.update();updateDynClip();renderer.render(scene,camera);})();
+</script>
+</body>
+</html>
