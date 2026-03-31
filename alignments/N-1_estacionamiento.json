@@ -1,0 +1,13 @@
+{
+  "group": "estacionamiento",
+  "scans": [
+    {"id":"S25","folder":"S25_N-1_E_P1","isRef":true, "transform":{"dx":0,    "dy":0,    "dz":0,    "rotY_deg":0}},
+    {"id":"S26","folder":"S26_N-1_E_P2","isRef":false,"transform":{"dx":1.7,  "dy":0.3,  "dz":8.6,  "rotY_deg":-167}},
+    {"id":"S27","folder":"S27_N-1_E_P3","isRef":false,"transform":{"dx":15.75,"dy":0.4,  "dz":-10.1,"rotY_deg":7.5}},
+    {"id":"S28","folder":"S28_N-1_E_P4","isRef":false,"transform":{"dx":-2.7, "dy":0.4,  "dz":14.6, "rotY_deg":-81.5}},
+    {"id":"S29","folder":"S29_N-1_E_P5","isRef":false,"transform":{"dx":20.35,"dy":0.4,  "dz":8.2,  "rotY_deg":-171}},
+    {"id":"S30","folder":"S30_N-1_E_P6","isRef":false,"transform":{"dx":19.35,"dy":0.35, "dz":8.5,  "rotY_deg":-80}},
+    {"id":"S31","folder":"S31_N-1_E_P7","isRef":false,"transform":{"dx":-3.05,"dy":0,    "dz":-9.7, "rotY_deg":95}},
+    {"id":"S32","folder":"S32_N-1_E_P8","isRef":false,"transform":{"dx":-4.4, "dy":0.25, "dz":-7.6, "rotY_deg":8.5}}
+  ]
+}
