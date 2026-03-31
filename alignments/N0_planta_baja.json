@@ -1,0 +1,13 @@
+{
+  "group": "pb-all",
+  "scans": [
+    {"id":"S01","folder":"S01_N0_Vestibulo",       "isRef":true, "transform":{"dx":0,     "dy":0,    "dz":0,     "rotY_deg":0}},
+    {"id":"S02","folder":"S02_N0_Fachada",          "isRef":false,"transform":{"dx":14.6,  "dy":0.25, "dz":0.8,   "rotY_deg":-175}},
+    {"id":"S03","folder":"S03_N0_Local1_P1",        "isRef":false,"transform":{"dx":5.5,   "dy":1.7,  "dz":-5.7,  "rotY_deg":-177}},
+    {"id":"S04","folder":"S04_N0_Local1_P2",        "isRef":false,"transform":{"dx":-16.85,"dy":0.5,  "dz":-2.75, "rotY_deg":-178}},
+    {"id":"S05","folder":"S05_N0_Local2_P1",        "isRef":false,"transform":{"dx":1.2,   "dy":1.9,  "dz":-13.5, "rotY_deg":-88}},
+    {"id":"S06","folder":"S06_N0_Local2_P2",        "isRef":false,"transform":{"dx":-9.7,  "dy":1.85, "dz":-13.5, "rotY_deg":-177.5}},
+    {"id":"S07","folder":"S07_N0_Local2_P3",        "isRef":false,"transform":{"dx":-9.05, "dy":1.2,  "dz":-16.15,"rotY_deg":-86.5}},
+    {"id":"S08","folder":"S08_N0-N3_Escaleras_P1",  "isRef":false,"transform":{"dx":-3.2,  "dy":0.35, "dz":0.3,   "rotY_deg":-179.5}}
+  ]
+}
