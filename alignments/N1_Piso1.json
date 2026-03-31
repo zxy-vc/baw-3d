@@ -1,0 +1,76 @@
+{
+  "generated": "2026-03-31T17:42:22.040Z",
+  "group": "n1-complete",
+  "scans": [
+    {
+      "id": "S09",
+      "folder": "S09_N1-N5_Escaleras_P2",
+      "name": "Escaleras N1–N5",
+      "isRef": true,
+      "transform": { "dx": 0, "dy": 0, "dz": 0, "rotY_deg": 0 }
+    },
+    {
+      "id": "S10",
+      "folder": "S10_N1_Pasillo",
+      "name": "Pasillo N1",
+      "isRef": false,
+      "transform": { "dx": -2.3, "dy": 0.9, "dz": -3, "rotY_deg": -89 }
+    },
+    {
+      "id": "S11",
+      "folder": "S11_N1_D104",
+      "name": "D104",
+      "isRef": false,
+      "transform": { "dx": 4.4, "dy": 3.35, "dz": 2, "rotY_deg": -88.5 }
+    },
+    {
+      "id": "S12",
+      "folder": "S12_N1_D103_P1",
+      "name": "D103 · P1",
+      "isRef": false,
+      "transform": { "dx": 16.35, "dy": 3.25, "dz": -0.95, "rotY_deg": 180 }
+    },
+    {
+      "id": "S13",
+      "folder": "S13_N1_D103_P2",
+      "name": "D103 · P2",
+      "isRef": false,
+      "transform": { "dx": 16.35, "dy": 3.25, "dz": 6.6, "rotY_deg": -180 }
+    },
+    {
+      "id": "S14",
+      "folder": "S14_N1_Fachada_Exterior",
+      "name": "Fachada Ext N1",
+      "isRef": false,
+      "transform": { "dx": 9.05, "dy": 0.65, "dz": 8.65, "rotY_deg": 1.5 }
+    },
+    {
+      "id": "S15",
+      "folder": "S15_N1_D102_P1",
+      "name": "D102 · P1",
+      "isRef": false,
+      "transform": { "dx": 16.15, "dy": 3, "dz": -0.35, "rotY_deg": -90 }
+    },
+    {
+      "id": "S16",
+      "folder": "S16_N1_D102_P2",
+      "name": "D102 · P2",
+      "isRef": false,
+      "transform": { "dx": 21.35, "dy": 3.3, "dz": -10.55, "rotY_deg": 0 }
+    },
+    {
+      "id": "S17",
+      "folder": "S17_N1_D101_P1",
+      "name": "D101 · P1",
+      "isRef": false,
+      "transform": { "dx": 2.8, "dy": 2.25, "dz": -0.2, "rotY_deg": 0 }
+    },
+    {
+      "id": "S18",
+      "folder": "S18_N1_D101_P2",
+      "name": "D101 · P2",
+      "isRef": false,
+      "transform": { "dx": -2.3, "dy": 2.7, "dz": -4.75, "rotY_deg": -90 }
+    }
+  ]
+}
