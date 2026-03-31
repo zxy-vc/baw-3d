@@ -98,9 +98,11 @@ body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;displ
       </optgroup>
       <optgroup label="N1 · Primer Piso">
         <option value="d103">Depto 103 (S12, S13)</option>
-        <option value="d102">Depto 102 (S16)</option>
+        <option value="d102">Depto 102 (S15, S16)</option>
+        <option value="d101">Depto 101 (S17, S18)</option>
         <option value="escaleras-n1">Escaleras N1–N5 (S09)</option>
         <option value="n1-all">Piso 1 completo (S09, S12, S13, S14, S16)</option>
+        <option value="n1-complete">★ Piso 1 — TODOS los scans (S09–S18)</option>
       </optgroup>
       <optgroup label="N2 · Segundo Piso">
         <option value="d202">Depto 202 (S21, S23)</option>
@@ -218,6 +220,22 @@ const CATALOG = {
     { id:'S13', folder:'S13_N1_D103_P2',    name:'D103 · P2' },
     { id:'S14', folder:'S14_N1_Fachada_Exterior', name:'Fachada Ext N1' },
     { id:'S16', folder:'S16_N1_D102_P2',    name:'D102 · P2' },
+  ],
+  'd101': [
+    { id:'S17', folder:'S17_N1_D101_P1',    name:'D101 · P1' },
+    { id:'S18', folder:'S18_N1_D101_P2',    name:'D101 · P2' },
+  ],
+  'n1-complete': [
+    { id:'S09', folder:'S09_N1-N5_Escaleras_P2', name:'Escaleras N1–N5' },
+    { id:'S10', folder:'S10_N1_Pasillo',         name:'Pasillo N1' },
+    { id:'S11', folder:'S11_N1_D104',            name:'D104' },
+    { id:'S12', folder:'S12_N1_D103_P1',         name:'D103 · P1' },
+    { id:'S13', folder:'S13_N1_D103_P2',         name:'D103 · P2' },
+    { id:'S14', folder:'S14_N1_Fachada_Exterior',name:'Fachada Ext N1' },
+    { id:'S15', folder:'S15_N1_D102_P1',         name:'D102 · P1' },
+    { id:'S16', folder:'S16_N1_D102_P2',         name:'D102 · P2' },
+    { id:'S17', folder:'S17_N1_D101_P1',         name:'D101 · P1' },
+    { id:'S18', folder:'S18_N1_D101_P2',         name:'D101 · P2' },
   ],
   'd202': [
     { id:'S21', folder:'S21_N2_D202_P1',    name:'D202 · P1' },
