@@ -115,6 +115,8 @@ body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;displ
       </optgroup>
     </select>
     <button id="load-btn" disabled>Cargar scans</button>
+    <button id="import-json-btn" style="width:100%;margin-top:4px;padding:6px;background:#1a1a2a;border:1px solid #2a2a4a;color:#6688cc;border-radius:4px;font-size:11px;cursor:pointer">📂 Importar JSON guardado</button>
+    <input type="file" id="import-json-file" accept=".json" style="display:none">
   </div>
 
   <div id="scan-panels"></div>
@@ -694,6 +696,64 @@ document.getElementById('clear-storage-btn').addEventListener('click', () => {
   if (group) { localStorage.removeItem(`align_${group}`); }
   document.getElementById('clear-storage-btn').textContent = '✅ Borrado';
   setTimeout(() => document.getElementById('clear-storage-btn').textContent = '🗑 Borrar sesión guardada', 1500);
+});
+
+// ── Import JSON ────────────────────────────────────────────────────────────
+document.getElementById('import-json-btn').addEventListener('click', () => {
+  document.getElementById('import-json-file').click();
+});
+
+document.getElementById('import-json-file').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      const scans = data.scans || [];
+
+      // Set group selector if possible
+      if (data.group) {
+        const sel = document.getElementById('group-select');
+        for (const opt of sel.options) {
+          if (opt.value === data.group) { sel.value = data.group; break; }
+        }
+        // Also store in localStorage for auto-restore
+        const storageData = scans.map(s => ({
+          id: s.id, isRef: s.isRef,
+          dx: s.transform.dx, dy: s.transform.dy||0, dz: s.transform.dz, rotY: s.transform.rotY_deg,
+          baked_dx:0, baked_dy:0, baked_dz:0, baked_rotY:0,
+        }));
+        localStorage.setItem(`align_${data.group}`, JSON.stringify(storageData));
+      }
+
+      // If scans already loaded, apply immediately
+      if (loadedScans.length > 0) {
+        scans.forEach(saved => {
+          const s = loadedScans.find(x => x.id === saved.id);
+          if (!s || s.isRef) return;
+          s.dx = saved.transform.dx;
+          s.dy = saved.transform.dy || 0;
+          s.dz = saved.transform.dz;
+          s.rotY = saved.transform.rotY_deg;
+          applyTransform(s);
+        });
+        syncPanelInputs();
+        document.getElementById('vp-name').textContent += ' — ✅ JSON importado';
+        setTimeout(() => {
+          const el = document.getElementById('vp-name');
+          if (el) el.textContent = el.textContent.replace(' — ✅ JSON importado','');
+        }, 3000);
+      } else {
+        document.getElementById('import-json-btn').textContent = '✅ JSON listo — carga el grupo';
+        document.getElementById('load-btn').disabled = false;
+      }
+    } catch(err) {
+      alert('Error leyendo JSON: ' + err.message);
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
 });
 
 // ── Export OBJ ─────────────────────────────────────────────────────────────
