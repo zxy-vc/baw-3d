@@ -25,9 +25,15 @@ body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;displ
 @keyframes spin{to{transform:rotate(360deg)}}
 #prog{font-size:12px;color:#666;text-align:center;max-width:200px}
 #scan-name{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.7);padding:4px 10px;border-radius:4px;font-size:11px;color:#aaa}
-#controls{position:absolute;top:10px;right:10px;display:flex;gap:5px}
+#controls{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+.ctrl-row{display:flex;gap:5px}
 .ctrl-btn{padding:4px 10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#aaa;border-radius:4px;cursor:pointer;font-size:11px}
 .ctrl-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+.ctrl-btn.active{background:rgba(59,130,246,.2);border-color:#3b82f6;color:#60a5fa}
+.clip-row{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:4px;border:1px solid rgba(255,255,255,.08)}
+.clip-label{font-size:10px;color:#666;width:52px}
+.clip-slider{width:90px;accent-color:#3b82f6;cursor:pointer}
+.clip-val{font-size:10px;color:#555;width:32px;font-family:monospace;text-align:right}
 #status{position:absolute;bottom:8px;left:10px;font-size:10px;color:#333}
 </style>
 <script type="importmap">
@@ -53,8 +59,28 @@ body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;displ
 <div id="viewer">
   <div id="scan-name">← Selecciona un scan o "Todos"</div>
   <div id="controls">
-    <button class="ctrl-btn" id="resetCam">Reset</button>
-    <button class="ctrl-btn" id="wireBtn">Wireframe</button>
+    <div class="ctrl-row">
+      <button class="ctrl-btn" id="resetCam">Reset</button>
+      <button class="ctrl-btn" id="wireBtn">Wireframe</button>
+      <button class="ctrl-btn" id="clipToggle">✂ Corte</button>
+    </div>
+    <div id="clip-controls" style="display:none">
+      <div class="clip-row">
+        <span class="clip-label">Techo Y</span>
+        <input type="range" class="clip-slider" id="clipY" min="-2" max="8" step="0.1" value="8">
+        <span class="clip-val" id="clipYval">8.0</span>
+      </div>
+      <div class="clip-row">
+        <span class="clip-label">Frente Z</span>
+        <input type="range" class="clip-slider" id="clipZ" min="-30" max="30" step="0.5" value="30">
+        <span class="clip-val" id="clipZval">30.0</span>
+      </div>
+      <div class="clip-row">
+        <span class="clip-label">Lado X</span>
+        <input type="range" class="clip-slider" id="clipX" min="-30" max="30" step="0.5" value="30">
+        <span class="clip-val" id="clipXval">30.0</span>
+      </div>
+    </div>
   </div>
   <div id="loading"><div class="spinner"></div><div id="prog">Cargando…</div></div>
   <div id="status">🖱 Orbitar: click+drag · Zoom: scroll · Pan: shift+drag</div>
@@ -256,6 +282,38 @@ document.getElementById('wireBtn').addEventListener('click', () => {
   wireMode = !wireMode;
   Object.values(loadedObjects).forEach(o => { if(o.parent) applyWireObj(o, wireMode); });
   document.getElementById('wireBtn').textContent = wireMode ? 'Sólido' : 'Wireframe';
+});
+
+// ── Clipping planes ───────────────────────────────────────────────────────
+const clipPlaneY = new THREE.Plane(new THREE.Vector3(0, -1, 0), 8);  // techo
+const clipPlaneZ = new THREE.Plane(new THREE.Vector3(0, 0, -1), 30); // frente
+const clipPlaneX = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 30); // lado
+let clippingActive = false;
+
+function setClipping(active) {
+  clippingActive = active;
+  renderer.clippingPlanes = active ? [clipPlaneY, clipPlaneZ, clipPlaneX] : [];
+  renderer.localClippingEnabled = active;
+  document.getElementById('clipToggle').classList.toggle('active', active);
+  document.getElementById('clip-controls').style.display = active ? 'block' : 'none';
+}
+
+document.getElementById('clipToggle').addEventListener('click', () => setClipping(!clippingActive));
+
+document.getElementById('clipY').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  clipPlaneY.constant = v;
+  document.getElementById('clipYval').textContent = v.toFixed(1);
+});
+document.getElementById('clipZ').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  clipPlaneZ.constant = v;
+  document.getElementById('clipZval').textContent = v.toFixed(1);
+});
+document.getElementById('clipX').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  clipPlaneX.constant = v;
+  document.getElementById('clipXval').textContent = v.toFixed(1);
 });
 document.getElementById('resetCam').addEventListener('click', () => {
   if (defPos) { camera.position.copy(defPos); controls.target.copy(defTarget); controls.update(); }
