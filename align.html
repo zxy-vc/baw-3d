@@ -120,9 +120,14 @@ body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;displ
   <div id="scan-panels"></div>
 
   <div id="sidebar-bottom">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:9px;color:#333">Auto-guardado activo</span>
+      <span id="save-indicator" style="font-size:9px;color:#4ade80;opacity:0;transition:opacity .3s"></span>
+    </div>
     <button id="export-btn">💾 Exportar JSON</button>
     <button id="export-obj-btn" style="width:100%;margin-top:6px;padding:8px;background:#1a2a1a;border:1px solid #2a5a2a;color:#8be08b;border-radius:4px;font-size:12px;cursor:pointer;font-weight:600">⬇️ Exportar OBJ combinado</button>
-    <div id="export-hint">JSON = transforms | OBJ = geometría ya fusionada</div>
+    <button id="clear-storage-btn" style="width:100%;margin-top:4px;padding:5px;background:none;border:1px solid #2a1a1a;color:#554;border-radius:4px;font-size:10px;cursor:pointer">🗑 Borrar sesión guardada</button>
+    <div id="export-hint" style="margin-top:5px">JSON = transforms | OBJ = geometría fusionada</div>
   </div>
 </div>
 
@@ -273,12 +278,62 @@ function hideOverlay() {
   document.getElementById('loading-overlay').style.display = 'none';
 }
 
+function saveToStorage() {
+  try {
+    const group = document.getElementById('group-select').value;
+    if (!group || !loadedScans.length) return;
+    const data = loadedScans.map(s => ({
+      id: s.id, isRef: s.isRef,
+      dx: s.dx, dy: s.dy||0, dz: s.dz, rotY: s.rotY,
+      baked_dx: s.baked_dx||0, baked_dy: s.baked_dy||0,
+      baked_dz: s.baked_dz||0, baked_rotY: s.baked_rotY||0,
+    }));
+    localStorage.setItem(`align_${group}`, JSON.stringify(data));
+    // Show save indicator
+    const ind = document.getElementById('save-indicator');
+    if (ind) { ind.textContent = '💾 Guardado'; ind.style.opacity='1'; setTimeout(()=>ind.style.opacity='0', 1200); }
+  } catch(e) {}
+}
+
+function loadFromStorage(group) {
+  try {
+    const raw = localStorage.getItem(`align_${group}`);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    let restored = 0;
+    data.forEach(saved => {
+      const s = loadedScans.find(x => x.id === saved.id);
+      if (!s) return;
+      s.dx = saved.dx; s.dy = saved.dy; s.dz = saved.dz; s.rotY = saved.rotY;
+      s.baked_dx = saved.baked_dx; s.baked_dy = saved.baked_dy;
+      s.baked_dz = saved.baked_dz; s.baked_rotY = saved.baked_rotY;
+      applyTransform(s);
+      restored++;
+    });
+    return restored > 0;
+  } catch(e) { return false; }
+}
+
+function syncPanelInputs() {
+  loadedScans.forEach(s => {
+    if (s.isRef) return;
+    ['dx','dy','dz','rotY'].forEach(axis => {
+      const slider = document.querySelector(`.ctrl-slider[data-id="${s.id}"][data-axis="${axis}"]`);
+      const numEl  = document.getElementById(`num-${axis}-${s.id}`);
+      const val = s[axis] || 0;
+      if (slider) slider.value = val;
+      if (numEl)  numEl.value  = val.toFixed(axis==='rotY'?1:2);
+    });
+  });
+}
+
 function applyTransform(scan) {
   if (!scan.obj) return;
   scan.obj.position.x = scan.dx;
   scan.obj.position.y = scan.baseY + (scan.dy || 0);
   scan.obj.position.z = scan.dz;
   scan.obj.rotation.y = scan.rotY * Math.PI / 180;
+  saveToStorage();
 }
 
 function applyWire(obj, on) {
@@ -358,6 +413,17 @@ async function loadGroup(groupKey) {
   hideOverlay();
   document.getElementById('load-btn').disabled = false;
   document.getElementById('vp-name').textContent = `Grupo: ${document.getElementById('group-select').options[document.getElementById('group-select').selectedIndex].text}`;
+
+  // Restore from localStorage if available
+  const restored = loadFromStorage(groupKey);
+  if (restored) {
+    syncPanelInputs();
+    document.getElementById('vp-name').textContent += ' — ✅ Sesión restaurada';
+    setTimeout(() => {
+      const el = document.getElementById('vp-name');
+      if (el) el.textContent = el.textContent.replace(' — ✅ Sesión restaurada','');
+    }, 3000);
+  }
 
   // Frame all loaded
   framAll();
@@ -538,6 +604,8 @@ function renderPanel(scan, error=false) {
         if (numEl) numEl.value = '0.00';
       });
 
+      saveToStorage();
+
       // Visual feedback
       const bakeBtn = panel.querySelector('.scan-bake-btn');
       bakeBtn.textContent = '✅ Fijado';
@@ -619,6 +687,13 @@ document.getElementById('export-btn').addEventListener('click', () => {
 
 document.getElementById('close-modal').addEventListener('click', () => {
   document.getElementById('export-modal').classList.remove('visible');
+});
+
+document.getElementById('clear-storage-btn').addEventListener('click', () => {
+  const group = document.getElementById('group-select').value;
+  if (group) { localStorage.removeItem(`align_${group}`); }
+  document.getElementById('clear-storage-btn').textContent = '✅ Borrado';
+  setTimeout(() => document.getElementById('clear-storage-btn').textContent = '🗑 Borrar sesión guardada', 1500);
 });
 
 // ── Export OBJ ─────────────────────────────────────────────────────────────
