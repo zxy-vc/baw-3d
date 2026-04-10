@@ -1,0 +1,42 @@
+{
+ "generated": "2026-04-10T13:51:23.690Z",
+ "group": "n2-all",
+ "scans": [
+ {
+ "id": "S21",
+ "folder": "S21_N2_D202_P1",
+ "name": "D202 · P1",
+ "isRef": true,
+ "transform": {
+ "dx": 0,
+ "dy": 0,
+ "dz": 0,
+ "rotY_deg": 0
+ }
+ },
+ {
+ "id": "S22",
+ "folder": "S22_N2_D201_P2",
+ "name": "D201 · P2",
+ "isRef": false,
+ "transform": {
+ "dx": -1.3,
+ "dy": 0.57,
+ "dz": 4.55,
+ "rotY_deg": -90
+ }
+ },
+ {
+ "id": "S23",
+ "folder": "S23_N2_D202",
+ "name": "D202",
+ "isRef": false,
+ "transform": {
+ "dx": 13.35,
+ "dy": 2.44,
+ "dz": 4.55,
+ "rotY_deg": 90
+ }
+ }
+ ]
+}

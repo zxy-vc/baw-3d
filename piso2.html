@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ALM809P — N2 Segundo Piso | BaW Lab</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;display:flex;height:100vh;overflow:hidden}
+#sidebar{width:190px;background:#111;border-right:1px solid #1e1e1e;padding:12px;flex-shrink:0;display:flex;flex-direction:column;gap:6px}
+#sidebar h2{font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
+.scan-btn{display:block;width:100%;text-align:left;padding:7px 10px;background:#1a1a1a;border:1px solid #242424;color:#888;border-radius:5px;cursor:pointer;font-size:11px;transition:all .12s}
+.scan-btn:hover{background:#1e1e1e;border-color:#333;color:#ccc}
+.scan-btn.active{background:#1a2f4f;border-color:#2563eb;color:#fff}
+.btn-all{background:#1a2a1a;border-color:#2a4a2a;color:#6a9a6a}
+.btn-all:hover{background:#1e2e1e;border-color:#3a6a3a;color:#8be08b}
+.btn-all.active{background:#1a3a1a;border-color:#3a8a3a;color:#8be08b}
+.divider{height:1px;background:#1e1e1e;margin:2px 0}
+#progress-bar{height:2px;background:#1a1a1a;border-radius:1px;overflow:hidden;margin-top:4px}
+#progress-fill{height:100%;background:#3b82f6;width:0%;transition:width .3s}
+#progress-text{font-size:9px;color:#333;margin-top:3px;text-align:center}
+#viewer{flex:1;position:relative}
+#loading{position:absolute;inset:0;background:rgba(0,0,0,.85);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:10}
+.spinner{width:36px;height:36px;border:3px solid #2a2a2a;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#prog{font-size:12px;color:#666;text-align:center;max-width:200px}
+#scan-name{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.7);padding:4px 10px;border-radius:4px;font-size:11px;color:#aaa}
+#controls{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+.ctrl-row{display:flex;gap:5px}
+.ctrl-btn{padding:4px 10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#aaa;border-radius:4px;cursor:pointer;font-size:11px}
+.ctrl-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+.ctrl-btn.active{background:rgba(59,130,246,.2);border-color:#3b82f6;color:#60a5fa}
+.clip-row{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:4px;border:1px solid rgba(255,255,255,.08)}
+.clip-label{font-size:10px;color:#666;width:52px}
+.clip-slider{width:90px;accent-color:#3b82f6;cursor:pointer}
+.clip-val{font-size:10px;color:#555;width:32px;font-family:monospace;text-align:right}
+#status{position:absolute;bottom:8px;left:10px;font-size:10px;color:#333}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="sidebar">
+  <h2>N2 · Segundo Piso</h2>
+  <button class="scan-btn btn-all" id="btn-all">🏗 Todos los scans</button>
+  <div class="divider"></div>
+  <button class="scan-btn" data-scan="S21" data-folder="S21_N2_D202_P1">S21 · D202 P1</button>
+  <button class="scan-btn" data-scan="S22" data-folder="S22_N2_D201_P2">S22 · D201 P2</button>
+  <button class="scan-btn" data-scan="S23" data-folder="S23_N2_D202">S23 · D202</button>
+  <div class="divider"></div>
+  <div id="progress-bar"><div id="progress-fill"></div></div>
+  <div id="progress-text">0%</div>
+</div>
+
+<div id="viewer">
+  <div id="loading">
+    <div class="spinner"></div>
+    <div id="prog">Cargando modelos 3D...</div>
+  </div>
+  <div id="scan-name"></div>
+  <div id="controls">
+    <div class="ctrl-row">
+      <button class="ctrl-btn" id="btn-wireframe">Wireframe</button>
+      <button class="ctrl-btn" id="btn-reset">Reset Cámara</button>
+    </div>
+    <div class="clip-row">
+      <label class="clip-label">Techo Y:</label>
+      <input type="range" id="clip-y" class="clip-slider" min="-10" max="30" step="0.1" value="8">
+      <span class="clip-val" id="clip-y-val">8.0m</span>
+    </div>
+  </div>
+  <div id="status"></div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+const viewer = document.getElementById('viewer');
+const sidebar = document.getElementById('sidebar');
+const loading = document.getElementById('loading');
+const scanName = document.getElementById('scan-name');
+const statusEl = document.getElementById('status');
+const progressBar = document.getElementById('progress-fill');
+const progressText = document.getElementById('progress-text');
+const clipYSlider = document.getElementById('clip-y');
+const clipYVal = document.getElementById('clip-y-val');
+
+const scanBtns = document.querySelectorAll('.scan-btn[data-scan]');
+const btnAll = document.getElementById('btn-all');
+const btnWireframe = document.getElementById('btn-wireframe');
+const btnReset = document.getElementById('btn-reset');
+
+let scene, camera, renderer, controls;
+let meshes = {};
+let activeScan = null;
+let allVisible = false;
+
+// Alignment data for N2
+const alignmentData = {
+  "S21": { dx: 0, dy: 0, dz: 0, rotY_deg: 0 },
+  "S22": { dx: -1.3, dy: 0.57, dz: 4.55, rotY_deg: -90 },
+  "S23": { dx: 13.35, dy: 2.44, dz: 4.55, rotY_deg: 90 }
+};
+
+function init() {
+  const w = viewer.clientWidth;
+  const h = viewer.clientHeight;
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0a0a);
+
+  camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 5000);
+  camera.position.set(5, 3, 8);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  viewer.appendChild(renderer.domElement);
+
+  // Lights
+  const ambLight = new THREE.AmbientLight(0xffffff, 0.6);
+  scene.add(ambLight);
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  dirLight.position.set(10, 10, 10);
+  scene.add(dirLight);
+
+  // Grid
+  const gridHelper = new THREE.GridHelper(50, 50, 0x222, 0x111);
+  scene.add(gridHelper);
+
+  // Simple orbit
+  setupControls();
+  loadScans();
+  animate();
+
+  window.addEventListener('resize', onWindowResize);
+}
+
+function setupControls() {
+  let isDragging = false;
+  let previousMousePosition = { x: 0, y: 0 };
+
+  viewer.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    previousMousePosition = { x: e.clientX, y: e.clientY };
+  });
+
+  viewer.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const deltaX = e.clientX - previousMousePosition.x;
+    const deltaY = e.clientY - previousMousePosition.y;
+
+    camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), deltaX * 0.005);
+    const right = new THREE.Vector3();
+    camera.getWorldDirection(right);
+    right.cross(camera.up).normalize();
+    camera.position.applyAxisAngle(right, deltaY * 0.005);
+
+    previousMousePosition = { x: e.clientX, y: e.clientY };
+  });
+
+  viewer.addEventListener('mouseup', () => { isDragging = false; });
+  viewer.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 1.1 : 0.9;
+    camera.position.multiplyScalar(delta);
+  });
+}
+
+function loadScans() {
+  loading.style.display = 'flex';
+  const loader = new OBJLoader();
+  const scans = ['S21', 'S22', 'S23'];
+  let loaded = 0;
+
+  scans.forEach((scanId, idx) => {
+    const folder = ['S21_N2_D202_P1', 'S22_N2_D201_P2', 'S23_N2_D202'][idx];
+    const objUrl = `https://cdn.jsdelivr.net/gh/zxy-vc/baw-viewer@main/${folder}/${folder}.obj`;
+
+    loader.load(objUrl, (obj) => {
+      const alignment = alignmentData[scanId];
+      obj.position.set(alignment.dx, alignment.dy, alignment.dz);
+      obj.rotateY((alignment.rotY_deg * Math.PI) / 180);
+      obj.traverse(child => {
+        if (child.isMesh) {
+          child.material = new THREE.MeshPhongMaterial({ color: 0xcccccc, side: THREE.DoubleSide });
+        }
+      });
+      meshes[scanId] = obj;
+      scene.add(obj);
+
+      loaded++;
+      progressBar.style.width = ((loaded / scans.length) * 100) + '%';
+      progressText.textContent = Math.round((loaded / scans.length) * 100) + '%';
+
+      if (loaded === scans.length) {
+        loading.style.display = 'none';
+        showScan('S21');
+      }
+    }, undefined, (err) => {
+      console.error(`Error loading ${scanId}:`, err);
+    });
+  });
+}
+
+function showScan(scanId) {
+  Object.keys(meshes).forEach(id => {
+    meshes[id].visible = (id === scanId);
+  });
+  activeScan = scanId;
+  allVisible = false;
+  scanName.textContent = `${scanId} · N2 — ${['D202 P1', 'D201 P2', 'D202'][['S21', 'S22', 'S23'].indexOf(scanId)]}`;
+  updateButtons();
+}
+
+function showAll() {
+  Object.keys(meshes).forEach(id => {
+    meshes[id].visible = true;
+  });
+  activeScan = null;
+  allVisible = true;
+  scanName.textContent = 'N2 · Todos los scans';
+  updateButtons();
+}
+
+function updateButtons() {
+  scanBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.scan === activeScan);
+  });
+  btnAll.classList.toggle('active', allVisible);
+}
+
+scanBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    showScan(btn.dataset.scan);
+  });
+});
+
+btnAll.addEventListener('click', showAll);
+
+btnWireframe.addEventListener('click', () => {
+  btnWireframe.classList.toggle('active');
+  const wireframe = btnWireframe.classList.contains('active');
+  scene.traverse(obj => {
+    if (obj.isMesh) obj.material.wireframe = wireframe;
+  });
+});
+
+btnReset.addEventListener('click', () => {
+  camera.position.set(5, 3, 8);
+  camera.lookAt(0, 0, 0);
+});
+
+clipYSlider.addEventListener('input', (e) => {
+  const y = parseFloat(e.target.value);
+  clipYVal.textContent = y.toFixed(1) + 'm';
+  scene.traverse(obj => {
+    if (obj.isMesh && obj.material) {
+      obj.material.clippingPlanes = [
+        new THREE.Plane(new THREE.Vector3(0, 1, 0), -y)
+      ];
+      obj.material.clipShadows = true;
+    }
+  });
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+
+function onWindowResize() {
+  const w = viewer.clientWidth;
+  const h = viewer.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+
+init();
+</script>
+</body>
+</html>
