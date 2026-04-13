@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ALM809P — Alineador N3 | BaW Lab</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;display:flex;height:100vh;overflow:hidden}
+
+/* ── Sidebar ── */
+#sidebar{width:280px;background:#111;border-right:1px solid #1e1e1e;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+#sidebar-top{padding:14px;border-bottom:1px solid #1e1e1e}
+#sidebar-top h2{font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
+#sidebar-top p{font-size:10px;color:#333;line-height:1.4}
+#group-select{width:100%;margin-top:8px;background:#1a1a1a;border:1px solid #2a2a2a;color:#ccc;padding:6px 8px;border-radius:4px;font-size:12px;cursor:pointer}
+#load-btn{width:100%;margin-top:6px;padding:7px;background:#1a3a1a;border:1px solid #2a5a2a;color:#8be08b;border-radius:4px;font-size:12px;cursor:pointer;font-weight:600}
+#load-btn:hover{background:#1e4a1e}
+#load-btn:disabled{background:#1a1a1a;border-color:#222;color:#444;cursor:not-allowed}
+
+/* ── Scan panels ── */
+#scan-panels{flex:1;overflow-y:auto;padding:8px}
+#scan-panels::-webkit-scrollbar{width:4px}
+#scan-panels::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+
+.scan-panel{background:#151515;border:1px solid #242424;border-radius:6px;margin-bottom:8px;overflow:hidden}
+.scan-header{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer}
+.scan-color{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.scan-name{font-size:12px;color:#bbb;flex:1}
+.scan-ref-badge{font-size:9px;color:#3b82f6;background:#1a2f4f;padding:1px 6px;border-radius:3px;font-weight:600}
+.scan-loading{font-size:10px;color:#555}
+.scan-controls{padding:0 10px 10px;display:none}
+.scan-controls.open{display:block}
+.ctrl-row{display:flex;align-items:center;gap:6px;margin-top:5px}
+.ctrl-label{font-size:10px;color:#555;width:40px;flex-shrink:0;text-align:right}
+.ctrl-slider{flex:1;accent-color:#3b82f6;cursor:pointer;min-width:0}
+/* Number input + arrow buttons */
+.ctrl-num-wrap{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.ctrl-arrow{width:18px;height:18px;background:#1a1a1a;border:1px solid #2a2a2a;color:#666;border-radius:3px;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}
+.ctrl-arrow:hover{background:#2a2a2a;color:#ccc}
+.ctrl-num{width:56px;background:#111;border:1px solid #2a2a2a;color:#aaa;font-size:10px;font-family:monospace;padding:2px 4px;border-radius:3px;text-align:right;-moz-appearance:textfield}
+.ctrl-num::-webkit-inner-spin-button,.ctrl-num::-webkit-outer-spin-button{-webkit-appearance:none}
+.ctrl-num:focus{outline:none;border-color:#3b82f6;color:#eee}
+.ctrl-reset{font-size:10px;color:#444;background:none;border:none;cursor:pointer;padding:0 2px;flex-shrink:0}
+.ctrl-reset:hover{color:#888}
+.scan-ref-btn{width:100%;margin-top:8px;padding:4px;background:none;border:1px solid #2a2a2a;color:#555;border-radius:3px;font-size:10px;cursor:pointer}
+.scan-ref-btn:hover{border-color:#3b82f6;color:#3b82f6}
+.scan-ref-btn.is-ref{border-color:#1a3a1a;color:#3a8a3a;background:#0a1a0a}
+
+/* ── Export ── */
+#sidebar-bottom{padding:10px;border-top:1px solid #1e1e1e}
+#export-btn{width:100%;padding:8px;background:#1a2f4f;border:1px solid #2563eb;color:#60a5fa;border-radius:4px;font-size:12px;cursor:pointer;font-weight:600}
+#export-btn:hover{background:#1e3a5f}
+#export-hint{font-size:9px;color:#333;margin-top:5px;text-align:center}
+
+/* ── Viewport ── */
+#viewer{flex:1;position:relative}
+#loading-overlay{position:absolute;inset:0;background:rgba(0,0,0,.85);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:20}
+.spinner{width:36px;height:36px;border:3px solid #2a2a2a;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#load-prog{font-size:12px;color:#666}
+#vp-name{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.7);padding:4px 10px;border-radius:4px;font-size:11px;color:#aaa}
+#vp-controls{position:absolute;top:10px;right:10px;display:flex;gap:5px}
+.vp-btn{padding:4px 10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#aaa;border-radius:4px;cursor:pointer;font-size:11px}
+.vp-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+#vp-status{position:absolute;bottom:8px;left:10px;font-size:10px;color:#333}
+#vp-hint{position:absolute;bottom:8px;right:10px;font-size:10px;color:#333}
+
+/* Export modal */
+#export-modal{display:none;position:absolute;inset:0;background:rgba(0,0,0,.8);z-index:30;align-items:center;justify-content:center}
+#export-modal.visible{display:flex}
+#export-box{background:#141414;border:1px solid #2a2a2a;border-radius:8px;padding:16px;width:520px;max-width:90vw}
+#export-box h3{font-size:13px;color:#eee;margin-bottom:10px}
+#export-json{width:100%;height:200px;background:#0a0a0a;border:1px solid #222;border-radius:4px;color:#8be08b;font-family:monospace;font-size:11px;padding:8px;resize:none}
+#export-actions{display:flex;gap:8px;margin-top:10px}
+#copy-btn{flex:1;padding:7px;background:#1a3a1a;border:1px solid #2a5a2a;color:#8be08b;border-radius:4px;font-size:12px;cursor:pointer}
+#close-modal{flex:1;padding:7px;background:#1a1a1a;border:1px solid #2a2a2a;color:#888;border-radius:4px;font-size:12px;cursor:pointer}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="sidebar">
+  <div id="sidebar-top">
+    <h2>🔧 Alineación de Scans</h2>
+    <p>Alineador dedicado para N3. Usa los grupos de Tercer Piso para S19 y S20, ajusta transforms y exporta el JSON final.</p>
+    <select id="group-select">
+      <option value="">— Elige un grupo —</option>
+      <optgroup label="N-1 · Estacionamiento">
+        <option value="estacionamiento">Estacionamiento (S25–S32, 8 scans)</option>
+      </optgroup>
+      <optgroup label="N0 · Planta Baja">
+        <option value="pb-vestibulo-fachada">Vestíbulo + Fachada (S01, S02)</option>
+        <option value="pb-local1">Local 1 (S03, S04)</option>
+        <option value="pb-local2">Local 2 (S05, S06, S07)</option>
+        <option value="pb-all">Planta Baja completa (S01–S08)</option>
+      </optgroup>
+      <optgroup label="N1 · Primer Piso">
+        <option value="d103">Depto 103 (S12, S13)</option>
+        <option value="d102">Depto 102 (S15, S16)</option>
+        <option value="d101">Depto 101 (S17, S18)</option>
+        <option value="escaleras-n1">Escaleras N1–N5 (S09)</option>
+        <option value="n1-all">Piso 1 completo (S09, S12, S13, S14, S16)</option>
+        <option value="n1-complete">★ Piso 1 — TODOS los scans (S09–S18)</option>
+      </optgroup>
+      <optgroup label="N2 · Segundo Piso">
+        <option value="d202">Depto 202 (S21, S23)</option>
+        <option value="d201">Depto 201 (S22)</option>
+        <option value="n2-all">Piso 2 completo (S21, S22, S23)</option>
+      </optgroup>
+      <optgroup label="N3 · Tercer Piso">
+        <option value="d304">Depto 304 (S19)</option>
+      </optgroup>
+      <optgroup label="N4 · Cuarto Piso">
+        <option value="d403">Depto 403 (S24)</option>
+      </optgroup>
+    </select>
+    <button id="load-btn" disabled>Cargar scans</button>
+    <button id="import-json-btn" style="width:100%;margin-top:4px;padding:6px;background:#1a1a2a;border:1px solid #2a2a4a;color:#6688cc;border-radius:4px;font-size:11px;cursor:pointer">📂 Importar JSON guardado</button>
+    <input type="file" id="import-json-file" accept=".json" style="display:none">
+  </div>
+
+  <div id="scan-panels"></div>
+
+  <div id="sidebar-bottom">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:9px;color:#333">Auto-guardado activo</span>
+      <span id="save-indicator" style="font-size:9px;color:#4ade80;opacity:0;transition:opacity .3s"></span>
+    </div>
+    <button id="export-btn">💾 Exportar JSON</button>
+    <button id="export-obj-btn" style="width:100%;margin-top:6px;padding:8px;background:#1a2a1a;border:1px solid #2a5a2a;color:#8be08b;border-radius:4px;font-size:12px;cursor:pointer;font-weight:600">⬇️ Exportar OBJ combinado</button>
+    <button id="clear-storage-btn" style="width:100%;margin-top:4px;padding:5px;background:none;border:1px solid #2a1a1a;color:#554;border-radius:4px;font-size:10px;cursor:pointer">🗑 Borrar sesión guardada</button>
+    <div id="export-hint" style="margin-top:5px">JSON = transforms | OBJ = geometría fusionada</div>
+  </div>
+</div>
+
+<div id="viewer">
+  <div id="vp-name">← Selecciona un grupo y carga los scans</div>
+  <div id="vp-controls">
+    <button class="vp-btn" id="resetCam">Reset cam</button>
+    <button class="vp-btn" id="wireBtn">Wireframe</button>
+    <button class="vp-btn" id="topBtn">Vista planta</button>
+  </div>
+  <div id="loading-overlay">
+    <div class="spinner"></div>
+    <div id="load-prog">Cargando…</div>
+  </div>
+  <div id="vp-status">🖱 Orbitar: click+drag · Zoom: scroll · Pan: shift+drag</div>
+  <div id="vp-hint">💡 El primer scan (referencia) no se mueve</div>
+</div>
+
+<!-- Export modal -->
+<div id="export-modal">
+  <div id="export-box">
+    <h3>📋 Alineación — alignment.json</h3>
+    <textarea id="export-json" readonly></textarea>
+    <div id="export-actions">
+      <button id="copy-btn">Copiar al portapapeles</button>
+      <button id="close-modal">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+// ── Scan catalog ──────────────────────────────────────────────────────────
+const BASE = 'https://media.githubusercontent.com/media/zxy-vc/baw-viewer/main/scans';
+
+const CATALOG = {
+  estacionamiento: [
+    { id:'S25', folder:'S25_N-1_E_P1', name:'Estacionamiento P1' },
+    { id:'S26', folder:'S26_N-1_E_P2', name:'Estacionamiento P2' },
+    { id:'S27', folder:'S27_N-1_E_P3', name:'Estacionamiento P3' },
+    { id:'S28', folder:'S28_N-1_E_P4', name:'Estacionamiento P4' },
+    { id:'S29', folder:'S29_N-1_E_P5', name:'Estacionamiento P5' },
+    { id:'S30', folder:'S30_N-1_E_P6', name:'Estacionamiento P6' },
+    { id:'S31', folder:'S31_N-1_E_P7', name:'Estacionamiento P7' },
+    { id:'S32', folder:'S32_N-1_E_P8', name:'Estacionamiento P8' },
+  ],
+  'pb-vestibulo-fachada': [
+    { id:'S01', folder:'S01_N0_Vestibulo',  name:'Vestíbulo' },
+    { id:'S02', folder:'S02_N0_Fachada',    name:'Fachada Exterior' },
+  ],
+  'pb-local1': [
+    { id:'S03', folder:'S03_N0_Local1_P1',  name:'Local 1 · P1' },
+    { id:'S04', folder:'S04_N0_Local1_P2',  name:'Local 1 · P2' },
+  ],
+  'pb-local2': [
+    { id:'S05', folder:'S05_N0_Local2_P1',  name:'Local 2 · P1' },
+    { id:'S06', folder:'S06_N0_Local2_P2',  name:'Local 2 · P2' },
+    { id:'S07', folder:'S07_N0_Local2_P3',  name:'Local 2 · P3' },
+  ],
+  'pb-all': [
+    { id:'S01', folder:'S01_N0_Vestibulo',       name:'Vestíbulo' },
+    { id:'S02', folder:'S02_N0_Fachada',         name:'Fachada Exterior' },
+    { id:'S03', folder:'S03_N0_Local1_P1',       name:'Local 1 · P1' },
+    { id:'S04', folder:'S04_N0_Local1_P2',       name:'Local 1 · P2' },
+    { id:'S05', folder:'S05_N0_Local2_P1',       name:'Local 2 · P1' },
+    { id:'S06', folder:'S06_N0_Local2_P2',       name:'Local 2 · P2' },
+    { id:'S07', folder:'S07_N0_Local2_P3',       name:'Local 2 · P3' },
+    { id:'S08', folder:'S08_N0-N3_Escaleras_P1', name:'Escaleras P1' },
+  ],
+  'd103': [
+    { id:'S12', folder:'S12_N1_D103_P1',    name:'D103 · P1' },
+    { id:'S13', folder:'S13_N1_D103_P2',    name:'D103 · P2' },
+  ],
+  'd102': [
+    { id:'S16', folder:'S16_N1_D102_P2',    name:'D102 · P2' },
+  ],
+  'escaleras-n1': [
+    { id:'S09', folder:'S09_N1-N5_Escaleras_P2', name:'Escaleras N1–N5' },
+  ],
+  'n1-all': [
+    { id:'S09', folder:'S09_N1-N5_Escaleras_P2', name:'Escaleras' },
+    { id:'S12', folder:'S12_N1_D103_P1',    name:'D103 · P1' },
+    { id:'S13', folder:'S13_N1_D103_P2',    name:'D103 · P2' },
+    { id:'S14', folder:'S14_N1_Fachada_Exterior', name:'Fachada Ext N1' },
+    { id:'S16', folder:'S16_N1_D102_P2',    name:'D102 · P2' },
+  ],
+  'd101': [
+    { id:'S17', folder:'S17_N1_D101_P1',    name:'D101 · P1' },
+    { id:'S18', folder:'S18_N1_D101_P2',    name:'D101 · P2' },
+  ],
+  'n1-complete': [
+    { id:'S09', folder:'S09_N1-N5_Escaleras_P2', name:'Escaleras N1–N5' },
+    { id:'S10', folder:'S10_N1_Pasillo',         name:'Pasillo N1' },
+    { id:'S11', folder:'S11_N1_D104',            name:'D104' },
+    { id:'S12', folder:'S12_N1_D103_P1',         name:'D103 · P1' },
+    { id:'S13', folder:'S13_N1_D103_P2',         name:'D103 · P2' },
+    { id:'S14', folder:'S14_N1_Fachada_Exterior',name:'Fachada Ext N1' },
+    { id:'S15', folder:'S15_N1_D102_P1',         name:'D102 · P1' },
+    { id:'S16', folder:'S16_N1_D102_P2',         name:'D102 · P2' },
+    { id:'S17', folder:'S17_N1_D101_P1',         name:'D101 · P1' },
+    { id:'S18', folder:'S18_N1_D101_P2',         name:'D101 · P2' },
+  ],
+  'd202': [
+    { id:'S21', folder:'S21_N2_D202_P1',    name:'D202 · P1' },
+    { id:'S23', folder:'S23_N2_D202',       name:'D202' },
+  ],
+  'd201': [
+    { id:'S22', folder:'S22_N2_D201_P2',    name:'D201 · P2' },
+  ],
+  'n2-all': [
+    { id:'S21', folder:'S21_N2_D202_P1',    name:'D202 · P1' },
+    { id:'S22', folder:'S22_N2_D201_P2',    name:'D201 · P2' },
+    { id:'S23', folder:'S23_N2_D202',       name:'D202' },
+  ],
+  'd304': [
+    { id:'S19', folder:'S19_N3_D304',       name:'D304' },
+  ],
+  'd403': [
+    { id:'S24', folder:'S24_N4_D403',       name:'D403' },
+  ],
+};
+
+// Per-scan colors
+const COLORS = [0x60a5fa, 0xf87171, 0x4ade80, 0xfbbf24, 0xa78bfa, 0xfb923c, 0x34d399, 0xe879f9];
+
+// ── Three.js setup ────────────────────────────────────────────────────────
+const viewerEl = document.getElementById('viewer');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(viewerEl.clientWidth, viewerEl.clientHeight);
+viewerEl.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a0a);
+
+const camera = new THREE.PerspectiveCamera(60, viewerEl.clientWidth/viewerEl.clientHeight, 0.01, 500);
+camera.position.set(8, 6, 12);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+const dir = new THREE.DirectionalLight(0xffffff, 0.5);
+dir.position.set(5, 10, 7);
+scene.add(dir);
+const grid = new THREE.GridHelper(60, 30, 0x1a1a1a, 0x141414);
+scene.add(grid);
+
+// ── State ─────────────────────────────────────────────────────────────────
+let loadedScans = [];  // { id, folder, name, obj, color, dx, dz, rotY, isRef }
+let wireMode = false;
+let defCamPos = camera.position.clone();
+let defCamTarget = new THREE.Vector3();
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function showOverlay(msg) {
+  document.getElementById('load-prog').textContent = msg;
+  document.getElementById('loading-overlay').style.display = 'flex';
+}
+function hideOverlay() {
+  document.getElementById('loading-overlay').style.display = 'none';
+}
+
+function saveToStorage() {
+  try {
+    const group = document.getElementById('group-select').value;
+    if (!group || !loadedScans.length) return;
+    const data = loadedScans.map(s => ({
+      id: s.id, isRef: s.isRef,
+      dx: s.dx, dy: s.dy||0, dz: s.dz, rotY: s.rotY,
+      baked_dx: s.baked_dx||0, baked_dy: s.baked_dy||0,
+      baked_dz: s.baked_dz||0, baked_rotY: s.baked_rotY||0,
+    }));
+    localStorage.setItem(`align_${group}`, JSON.stringify(data));
+    // Show save indicator
+    const ind = document.getElementById('save-indicator');
+    if (ind) { ind.textContent = '💾 Guardado'; ind.style.opacity='1'; setTimeout(()=>ind.style.opacity='0', 1200); }
+  } catch(e) {}
+}
+
+function loadFromStorage(group) {
+  try {
+    const raw = localStorage.getItem(`align_${group}`);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    let restored = 0;
+    data.forEach(saved => {
+      const s = loadedScans.find(x => x.id === saved.id);
+      if (!s) return;
+      s.dx = saved.dx; s.dy = saved.dy; s.dz = saved.dz; s.rotY = saved.rotY;
+      s.baked_dx = saved.baked_dx; s.baked_dy = saved.baked_dy;
+      s.baked_dz = saved.baked_dz; s.baked_rotY = saved.baked_rotY;
+      applyTransform(s);
+      restored++;
+    });
+    return restored > 0;
+  } catch(e) { return false; }
+}
+
+function syncPanelInputs() {
+  loadedScans.forEach(s => {
+    if (s.isRef) return;
+    ['dx','dy','dz','rotY'].forEach(axis => {
+      const slider = document.querySelector(`.ctrl-slider[data-id="${s.id}"][data-axis="${axis}"]`);
+      const numEl  = document.getElementById(`num-${axis}-${s.id}`);
+      const val = s[axis] || 0;
+      if (slider) slider.value = val;
+      if (numEl)  numEl.value  = val.toFixed(axis==='rotY'?1:2);
+    });
+  });
+}
+
+function applyTransform(scan) {
+  if (!scan.obj) return;
+  scan.obj.position.x = scan.dx;
+  scan.obj.position.y = scan.baseY + (scan.dy || 0);
+  scan.obj.position.z = scan.dz;
+  scan.obj.rotation.y = scan.rotY * Math.PI / 180;
+  saveToStorage();
+}
+
+function applyWire(obj, on) {
+  obj.traverse(c => {
+    if (!c.isMesh) return;
+    if (on) { c.userData._m = c.material; c.material = new THREE.MeshBasicMaterial({color:0x3b82f6,wireframe:true}); }
+    else if (c.userData._m) c.material = c.userData._m;
+  });
+}
+
+// ── Load group ────────────────────────────────────────────────────────────
+async function loadGroup(groupKey) {
+  const scans = CATALOG[groupKey];
+  if (!scans) return;
+
+  // Clear previous
+  loadedScans.forEach(s => { if(s.obj) scene.remove(s.obj); });
+  loadedScans = [];
+  document.getElementById('scan-panels').innerHTML = '';
+
+  showOverlay(`Cargando 0/${scans.length}…`);
+  document.getElementById('load-btn').disabled = true;
+
+  const loader = new OBJLoader();
+  let doneCount = 0;
+
+  const promises = scans.map((scan, i) => new Promise((resolve) => {
+    const color = COLORS[i % COLORS.length];
+    const isRef = i === 0;
+    const scanState = { ...scan, obj: null, color, dx: 0, dy: 0, dz: 0, rotY: 0, isRef, baseY: 0 };
+    loadedScans.push(scanState);
+
+    const url = `${BASE}/${scan.folder}/ReprocessedMesh.obj`;
+    loader.load(url, (obj) => {
+      // Normalize: floor at Y=0
+      const box = new THREE.Box3().setFromObject(obj);
+      const baseY = -box.min.y;
+      obj.position.y = baseY;
+      scanState.baseY = baseY;
+
+      // Reference: also center on XZ
+      if (isRef) {
+        const cx = (box.min.x + box.max.x) / 2;
+        const cz = (box.min.z + box.max.z) / 2;
+        obj.position.x = -cx;
+        obj.position.z = -cz;
+      }
+
+      const mat = new THREE.MeshLambertMaterial({
+        color,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: isRef ? 0.95 : 0.75,
+      });
+      obj.traverse(c => { if (c.isMesh) c.material = mat; });
+
+      scanState.obj = obj;
+      scene.add(obj);
+
+      if (wireMode) applyWire(obj, true);
+
+      doneCount++;
+      showOverlay(`Cargando ${doneCount}/${scans.length}…`);
+      renderPanel(scanState);
+      resolve();
+    }, undefined, (err) => {
+      console.error('Load error', scan.id, err);
+      doneCount++;
+      showOverlay(`Cargando ${doneCount}/${scans.length}…`);
+      scanState.obj = null;
+      renderPanel(scanState, true);
+      resolve();
+    });
+  }));
+
+  await Promise.all(promises);
+  hideOverlay();
+  document.getElementById('load-btn').disabled = false;
+  document.getElementById('vp-name').textContent = `Grupo: ${document.getElementById('group-select').options[document.getElementById('group-select').selectedIndex].text}`;
+
+  // Restore from localStorage if available
+  const restored = loadFromStorage(groupKey);
+  if (restored) {
+    syncPanelInputs();
+    document.getElementById('vp-name').textContent += ' — ✅ Sesión restaurada';
+    setTimeout(() => {
+      const el = document.getElementById('vp-name');
+      if (el) el.textContent = el.textContent.replace(' — ✅ Sesión restaurada','');
+    }, 3000);
+  }
+
+  // Frame all loaded
+  framAll();
+}
+
+function framAll() {
+  const box = new THREE.Box3();
+  loadedScans.forEach(s => { if (s.obj) box.expandByObject(s.obj); });
+  if (box.isEmpty()) return;
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  const dist = Math.max(size.x, size.z) * 1.6;
+  camera.position.set(center.x + dist * 0.6, center.y + dist * 0.5, center.z + dist);
+  controls.target.copy(center);
+  controls.update();
+  defCamPos = camera.position.clone();
+  defCamTarget = controls.target.clone();
+  grid.position.y = box.min.y - 0.01;
+}
+
+// ── Control row builder ──────────────────────────────────────────────────
+function makeCtrlRow(id, axis, label, min, max, step, unit='') {
+  return `
+    <div class="ctrl-row">
+      <span class="ctrl-label">${label}</span>
+      <input type="range" class="ctrl-slider" data-id="${id}" data-axis="${axis}" min="${min}" max="${max}" step="${step}" value="0">
+      <div class="ctrl-num-wrap">
+        <button class="ctrl-arrow" data-id="${id}" data-axis="${axis}" data-dir="-1" data-step="${step}">−</button>
+        <input type="number" class="ctrl-num" id="num-${axis}-${id}" value="0" step="${step}" min="${min}" max="${max}" data-id="${id}" data-axis="${axis}" data-unit="${unit}">
+        <button class="ctrl-arrow" data-id="${id}" data-axis="${axis}" data-dir="1" data-step="${step}">+</button>
+      </div>
+      <button class="ctrl-reset" data-id="${id}" data-axis="${axis}" title="Reset">↺</button>
+    </div>`;
+}
+
+// ── Render panel for a scan ────────────────────────────────────────────────
+function renderPanel(scan, error=false) {
+  const existing = document.querySelector(`.scan-panel[data-id="${scan.id}"]`);
+  if (existing) return;
+
+  const panel = document.createElement('div');
+  panel.className = 'scan-panel';
+  panel.dataset.id = scan.id;
+
+  const colorHex = '#' + scan.color.toString(16).padStart(6, '0');
+  const status = error ? '<span class="scan-loading">❌ Error</span>' : (scan.obj ? '' : '<span class="scan-loading">Cargando…</span>');
+
+  panel.innerHTML = `
+    <div class="scan-header" data-id="${scan.id}">
+      <div class="scan-color" style="background:${colorHex}"></div>
+      <span class="scan-name">${scan.id} · ${scan.name}</span>
+      ${scan.isRef ? '<span class="scan-ref-badge">REF</span>' : ''}
+      ${status}
+    </div>
+    ${!scan.isRef && !error ? `
+    <div class="scan-controls" data-id="${scan.id}">
+      ${makeCtrlRow(scan.id,'dx','X (m)',-30,30,0.05)}
+      ${makeCtrlRow(scan.id,'dy','Y (m)',-5,5,0.05)}
+      ${makeCtrlRow(scan.id,'dz','Z (m)',-30,30,0.05)}
+      ${makeCtrlRow(scan.id,'rotY','Rot Y°',-180,180,0.5,'°')}
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="scan-ref-btn" data-id="${scan.id}" style="flex:1">Usar como referencia</button>
+        <button class="scan-bake-btn" data-id="${scan.id}" style="flex:1;background:#1a1a2a;border-color:#334;color:#6688cc" title="Fija posición actual — sliders vuelven a cero">📌 Fijar posición</button>
+      </div>
+    </div>
+    ` : `<div class="scan-controls" data-id="${scan.id}"><p style="font-size:10px;color:#444;padding:6px 0">Referencia — posición fija (centrada en 0,0)</p></div>`}
+  `;
+
+  document.getElementById('scan-panels').appendChild(panel);
+
+  // Toggle expand
+  panel.querySelector('.scan-header').addEventListener('click', () => {
+    const ctrl = panel.querySelector('.scan-controls');
+    if (ctrl) ctrl.classList.toggle('open');
+  });
+
+  if (!scan.isRef && !error) {
+    const ctrl = panel.querySelector('.scan-controls');
+    if (ctrl) ctrl.classList.add('open');
+
+    function syncControls(id, axis, val) {
+      const s = loadedScans.find(x => x.id === id);
+      if (!s) return;
+      const clampMin = axis === 'dy' ? -5 : (axis === 'rotY' ? -180 : -30);
+      const clampMax = axis === 'dy' ? 5  : (axis === 'rotY' ? 180  : 30);
+      val = Math.max(clampMin, Math.min(clampMax, val));
+      s[axis] = val;
+      applyTransform(s);
+      // Sync slider
+      const slider = panel.querySelector(`.ctrl-slider[data-id="${id}"][data-axis="${axis}"]`);
+      if (slider) slider.value = val;
+      // Sync number input
+      const numEl = document.getElementById(`num-${axis}-${id}`);
+      if (numEl) numEl.value = val.toFixed(axis === 'rotY' ? 1 : 2);
+    }
+
+    // Slider events
+    panel.querySelectorAll('.ctrl-slider').forEach(slider => {
+      slider.addEventListener('input', () => {
+        syncControls(slider.dataset.id, slider.dataset.axis, parseFloat(slider.value));
+      });
+    });
+
+    // Number input events
+    panel.querySelectorAll('.ctrl-num').forEach(numEl => {
+      numEl.addEventListener('change', () => {
+        syncControls(numEl.dataset.id, numEl.dataset.axis, parseFloat(numEl.value) || 0);
+      });
+      numEl.addEventListener('keydown', e => {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          const step = parseFloat(numEl.step) || 0.05;
+          const delta = e.key === 'ArrowUp' ? step : -step;
+          const s = loadedScans.find(x => x.id === numEl.dataset.id);
+          if (s) syncControls(numEl.dataset.id, numEl.dataset.axis, (s[numEl.dataset.axis] || 0) + delta);
+        }
+      });
+    });
+
+    // Arrow buttons (+/-)
+    panel.querySelectorAll('.ctrl-arrow').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const step = parseFloat(btn.dataset.step) || 0.05;
+        const dir = parseFloat(btn.dataset.dir);
+        const s = loadedScans.find(x => x.id === btn.dataset.id);
+        if (s) syncControls(btn.dataset.id, btn.dataset.axis, (s[btn.dataset.axis] || 0) + step * dir);
+      });
+    });
+
+    // Reset buttons
+    panel.querySelectorAll('.ctrl-reset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        syncControls(btn.dataset.id, btn.dataset.axis, 0);
+      });
+    });
+
+    // Set as reference
+    panel.querySelector('.scan-ref-btn').addEventListener('click', () => {
+      setReference(scan.id);
+    });
+
+    // Bake: commit current transform into geometry, reset sliders to 0
+    panel.querySelector('.scan-bake-btn').addEventListener('click', () => {
+      const s = loadedScans.find(x => x.id === scan.id);
+      if (!s || !s.obj) return;
+
+      // Accumulate transform into baked totals (for export)
+      s.baked_dx   = (s.baked_dx   || 0) + s.dx;
+      s.baked_dy   = (s.baked_dy   || 0) + (s.dy||0);
+      s.baked_dz   = (s.baked_dz   || 0) + s.dz;
+      s.baked_rotY = (s.baked_rotY || 0) + s.rotY;
+
+      // Bake position & rotation into geometry vertices
+      s.obj.updateMatrixWorld(true);
+      s.obj.traverse(c => {
+        if (!c.isMesh) return;
+        c.geometry = c.geometry.clone();
+        c.geometry.applyMatrix4(c.matrixWorld);
+        c.position.set(0,0,0);
+        c.rotation.set(0,0,0);
+        c.scale.set(1,1,1);
+        c.updateMatrix();
+      });
+
+      // Reset group transform
+      s.obj.position.set(0,0,0);
+      s.obj.rotation.set(0,0,0);
+      s.baseY = 0;
+
+      // Reset live state values
+      s.dx = 0; s.dy = 0; s.dz = 0; s.rotY = 0;
+
+      // Reset all controls to 0
+      ['dx','dy','dz','rotY'].forEach(axis => {
+        const slider = panel.querySelector(`.ctrl-slider[data-axis="${axis}"]`);
+        if (slider) slider.value = 0;
+        const numEl = document.getElementById(`num-${axis}-${s.id}`);
+        if (numEl) numEl.value = '0.00';
+      });
+
+      saveToStorage();
+
+      // Visual feedback
+      const bakeBtn = panel.querySelector('.scan-bake-btn');
+      bakeBtn.textContent = '✅ Fijado';
+      bakeBtn.style.color = '#4ade80';
+      setTimeout(() => { bakeBtn.textContent = '📌 Fijar posición'; bakeBtn.style.color = '#6688cc'; }, 2000);
+    });
+  }
+}
+
+function setReference(id) {
+  // Find new ref and old ref
+  const newRef = loadedScans.find(s => s.id === id);
+  if (!newRef) return;
+
+  loadedScans.forEach(s => { s.isRef = s.id === id; });
+
+  // Rebuild panels
+  document.getElementById('scan-panels').innerHTML = '';
+  loadedScans.forEach(s => renderPanel(s));
+}
+
+// ── Wireframe ──────────────────────────────────────────────────────────────
+document.getElementById('wireBtn').addEventListener('click', () => {
+  wireMode = !wireMode;
+  loadedScans.forEach(s => { if (s.obj) applyWire(s.obj, wireMode); });
+  document.getElementById('wireBtn').textContent = wireMode ? 'Sólido' : 'Wireframe';
+});
+
+// ── Reset cam ──────────────────────────────────────────────────────────────
+document.getElementById('resetCam').addEventListener('click', () => {
+  camera.position.copy(defCamPos);
+  controls.target.copy(defCamTarget);
+  controls.update();
+});
+
+// ── Top view ───────────────────────────────────────────────────────────────
+document.getElementById('topBtn').addEventListener('click', () => {
+  const box = new THREE.Box3();
+  loadedScans.forEach(s => { if (s.obj) box.expandByObject(s.obj); });
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const dist = Math.max(size.x, size.z) * 1.2;
+  camera.position.set(center.x, center.y + dist, center.z + 0.001);
+  controls.target.copy(center);
+  controls.update();
+});
+
+// ── Group selector ─────────────────────────────────────────────────────────
+document.getElementById('group-select').addEventListener('change', (e) => {
+  document.getElementById('load-btn').disabled = !e.target.value;
+});
+
+document.getElementById('load-btn').addEventListener('click', () => {
+  const key = document.getElementById('group-select').value;
+  if (key) loadGroup(key);
+});
+
+// ── Export ─────────────────────────────────────────────────────────────────
+document.getElementById('export-btn').addEventListener('click', () => {
+  const alignment = {
+    generated: new Date().toISOString(),
+    group: document.getElementById('group-select').value,
+    scans: loadedScans.map(s => ({
+      id: s.id,
+      folder: s.folder,
+      name: s.name,
+      isRef: s.isRef,
+      transform: {
+        dx: parseFloat(((s.baked_dx||0) + s.dx).toFixed(4)),
+        dy: parseFloat(((s.baked_dy||0) + (s.dy||0)).toFixed(4)),
+        dz: parseFloat(((s.baked_dz||0) + s.dz).toFixed(4)),
+        rotY_deg: parseFloat(((s.baked_rotY||0) + s.rotY).toFixed(2)),
+      }
+    }))
+  };
+  document.getElementById('export-json').value = JSON.stringify(alignment, null, 2);
+  document.getElementById('export-modal').classList.add('visible');
+});
+
+document.getElementById('close-modal').addEventListener('click', () => {
+  document.getElementById('export-modal').classList.remove('visible');
+});
+
+document.getElementById('clear-storage-btn').addEventListener('click', () => {
+  const group = document.getElementById('group-select').value;
+  if (group) { localStorage.removeItem(`align_${group}`); }
+  document.getElementById('clear-storage-btn').textContent = '✅ Borrado';
+  setTimeout(() => document.getElementById('clear-storage-btn').textContent = '🗑 Borrar sesión guardada', 1500);
+});
+
+// ── Import JSON ────────────────────────────────────────────────────────────
+document.getElementById('import-json-btn').addEventListener('click', () => {
+  document.getElementById('import-json-file').click();
+});
+
+document.getElementById('import-json-file').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      const scans = data.scans || [];
+
+      // Set group selector if possible
+      if (data.group) {
+        const sel = document.getElementById('group-select');
+        for (const opt of sel.options) {
+          if (opt.value === data.group) { sel.value = data.group; break; }
+        }
+        // Also store in localStorage for auto-restore
+        const storageData = scans.map(s => ({
+          id: s.id, isRef: s.isRef,
+          dx: s.transform.dx, dy: s.transform.dy||0, dz: s.transform.dz, rotY: s.transform.rotY_deg,
+          baked_dx:0, baked_dy:0, baked_dz:0, baked_rotY:0,
+        }));
+        localStorage.setItem(`align_${data.group}`, JSON.stringify(storageData));
+      }
+
+      // If scans already loaded, apply immediately
+      if (loadedScans.length > 0) {
+        scans.forEach(saved => {
+          const s = loadedScans.find(x => x.id === saved.id);
+          if (!s || s.isRef) return;
+          s.dx = saved.transform.dx;
+          s.dy = saved.transform.dy || 0;
+          s.dz = saved.transform.dz;
+          s.rotY = saved.transform.rotY_deg;
+          applyTransform(s);
+        });
+        syncPanelInputs();
+        document.getElementById('vp-name').textContent += ' — ✅ JSON importado';
+        setTimeout(() => {
+          const el = document.getElementById('vp-name');
+          if (el) el.textContent = el.textContent.replace(' — ✅ JSON importado','');
+        }, 3000);
+      } else {
+        document.getElementById('import-json-btn').textContent = '✅ JSON listo — carga el grupo';
+        document.getElementById('load-btn').disabled = false;
+      }
+    } catch(err) {
+      alert('Error leyendo JSON: ' + err.message);
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
+
+// ── Export OBJ ─────────────────────────────────────────────────────────────
+document.getElementById('export-obj-btn').addEventListener('click', () => {
+  const lines = ['# ALM809P — Aligned merge export'];
+  let vOffset = 0, vtOffset = 0, vnOffset = 0;
+
+  for (const s of loadedScans) {
+    if (!s.obj) continue;
+
+    // Apply any pending (un-baked) transform first
+    s.obj.updateMatrixWorld(true);
+
+    lines.push(`# ${s.id} — ${s.name}`);
+
+    const vBuf = [], vtBuf = [], vnBuf = [], fBuf = [];
+
+    s.obj.traverse(child => {
+      if (!child.isMesh) return;
+      const geo = child.geometry;
+      const mat = child.matrixWorld;
+
+      const pos = geo.attributes.position;
+      const uv  = geo.attributes.uv;
+      const nor = geo.attributes.normal;
+
+      // Vertices (world space)
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+        // Apply world matrix manually
+        const wx = mat.elements[0]*x + mat.elements[4]*y + mat.elements[8]*z  + mat.elements[12];
+        const wy = mat.elements[1]*x + mat.elements[5]*y + mat.elements[9]*z  + mat.elements[13];
+        const wz = mat.elements[2]*x + mat.elements[6]*y + mat.elements[10]*z + mat.elements[14];
+        vBuf.push(`v ${wx.toFixed(5)} ${wy.toFixed(5)} ${wz.toFixed(5)}`);
+      }
+      // UVs
+      if (uv) for (let i = 0; i < uv.count; i++)
+        vtBuf.push(`vt ${uv.getX(i).toFixed(5)} ${uv.getY(i).toFixed(5)}`);
+      // Normals
+      if (nor) for (let i = 0; i < nor.count; i++) {
+        const nx = nor.getX(i), ny = nor.getY(i), nz = nor.getZ(i);
+        const wnx = mat.elements[0]*nx + mat.elements[4]*ny + mat.elements[8]*nz;
+        const wny = mat.elements[1]*nx + mat.elements[5]*ny + mat.elements[9]*nz;
+        const wnz = mat.elements[2]*nx + mat.elements[6]*ny + mat.elements[10]*nz;
+        vnBuf.push(`vn ${wnx.toFixed(5)} ${wny.toFixed(5)} ${wnz.toFixed(5)}`);
+      }
+      // Faces
+      fBuf.push(`g ${s.id}`);
+      const idx = geo.index;
+      if (idx) {
+        for (let i = 0; i < idx.count; i += 3) {
+          const a = idx.getX(i)+1+vOffset, b = idx.getX(i+1)+1+vOffset, c = idx.getX(i+2)+1+vOffset;
+          const ta = idx.getX(i)+1+vtOffset, tb = idx.getX(i+1)+1+vtOffset, tc = idx.getX(i+2)+1+vtOffset;
+          const na = idx.getX(i)+1+vnOffset, nb = idx.getX(i+1)+1+vnOffset, nc = idx.getX(i+2)+1+vnOffset;
+          if (uv && nor) fBuf.push(`f ${a}/${ta}/${na} ${b}/${tb}/${nb} ${c}/${tc}/${nc}`);
+          else if (uv)   fBuf.push(`f ${a}/${ta} ${b}/${tb} ${c}/${tc}`);
+          else if (nor)  fBuf.push(`f ${a}//${na} ${b}//${nb} ${c}//${nc}`);
+          else           fBuf.push(`f ${a} ${b} ${c}`);
+        }
+      }
+      vOffset  += pos.count;
+      if (uv)  vtOffset += uv.count;
+      if (nor) vnOffset += nor.count;
+    });
+
+    lines.push(...vBuf, ...vtBuf, ...vnBuf, ...fBuf);
+  }
+
+  const blob = new Blob([lines.join('\n')], {type:'text/plain'});
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const group = document.getElementById('group-select').value || 'export';
+  a.download = `ALM809P_${group}_aligned.obj`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('copy-btn').addEventListener('click', () => {
+  navigator.clipboard.writeText(document.getElementById('export-json').value)
+    .then(() => { document.getElementById('copy-btn').textContent = '✅ Copiado'; setTimeout(() => { document.getElementById('copy-btn').textContent = 'Copiar al portapapeles'; }, 2000); });
+});
+
+// ── Resize ─────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = viewerEl.clientWidth/viewerEl.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(viewerEl.clientWidth, viewerEl.clientHeight);
+});
+
+// ── Animate ────────────────────────────────────────────────────────────────
+(function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>
