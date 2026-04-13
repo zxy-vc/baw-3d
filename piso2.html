@@ -10,30 +10,13 @@ body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;displ
 #sidebar{width:190px;background:#111;border-right:1px solid #1e1e1e;padding:12px;flex-shrink:0;display:flex;flex-direction:column;gap:6px}
 #sidebar h2{font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
 .scan-btn{display:block;width:100%;text-align:left;padding:7px 10px;background:#1a1a1a;border:1px solid #242424;color:#888;border-radius:5px;cursor:pointer;font-size:11px;transition:all .12s}
-.scan-btn:hover{background:#1e1e1e;border-color:#333;color:#ccc}
-.scan-btn.active{background:#1a2f4f;border-color:#2563eb;color:#fff}
-.btn-all{background:#1a2a1a;border-color:#2a4a2a;color:#6a9a6a}
-.btn-all:hover{background:#1e2e1e;border-color:#3a6a3a;color:#8be08b}
-.btn-all.active{background:#1a3a1a;border-color:#3a8a3a;color:#8be08b}
-.divider{height:1px;background:#1e1e1e;margin:2px 0}
-#progress-bar{height:2px;background:#1a1a1a;border-radius:1px;overflow:hidden;margin-top:4px}
-#progress-fill{height:100%;background:#3b82f6;width:0%;transition:width .3s}
-#progress-text{font-size:9px;color:#333;margin-top:3px;text-align:center}
-#viewer{flex:1;position:relative}
-#loading{position:absolute;inset:0;background:rgba(0,0,0,.85);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:10}
-.spinner{width:36px;height:36px;border:3px solid #2a2a2a;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-#prog{font-size:12px;color:#666;text-align:center;max-width:200px}
+.scan-btn:hover{background:#1e1e1e;border-color:#333;color:#ccc}.scan-btn.active{background:#1a2f4f;border-color:#2563eb;color:#fff}
+.btn-all{background:#1a2a1a;border-color:#2a4a2a;color:#6a9a6a}.btn-all:hover{background:#1e2e1e;border-color:#3a6a3a;color:#8be08b}.btn-all.active{background:#1a3a1a;border-color:#3a8a3a;color:#8be08b}
+.divider{height:1px;background:#1e1e1e;margin:2px 0}#progress-bar{height:2px;background:#1a1a1a;border-radius:1px;overflow:hidden;margin-top:4px}#progress-fill{height:100%;background:#3b82f6;width:0%;transition:width .3s}#progress-text{font-size:9px;color:#333;margin-top:3px;text-align:center}
+#viewer{flex:1;position:relative}#loading{position:absolute;inset:0;background:rgba(0,0,0,.85);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:10}.spinner{width:36px;height:36px;border:3px solid #2a2a2a;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}#prog{font-size:12px;color:#666;text-align:center;max-width:200px}
 #scan-name{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.7);padding:4px 10px;border-radius:4px;font-size:11px;color:#aaa}
-#controls{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:5px;align-items:flex-end}
-.ctrl-row{display:flex;gap:5px}
-.ctrl-btn{padding:4px 10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#aaa;border-radius:4px;cursor:pointer;font-size:11px}
-.ctrl-btn:hover{background:rgba(255,255,255,.12);color:#fff}
-.ctrl-btn.active{background:rgba(59,130,246,.2);border-color:#3b82f6;color:#60a5fa}
-.clip-row{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:4px;border:1px solid rgba(255,255,255,.08)}
-.clip-label{font-size:10px;color:#666;width:52px}
-.clip-slider{width:90px;accent-color:#3b82f6;cursor:pointer}
-.clip-val{font-size:10px;color:#555;width:32px;font-family:monospace;text-align:right}
+#controls{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:5px;align-items:flex-end}.ctrl-row{display:flex;gap:5px}.ctrl-btn{padding:4px 10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#aaa;border-radius:4px;cursor:pointer;font-size:11px}.ctrl-btn:hover{background:rgba(255,255,255,.12);color:#fff}.ctrl-btn.active{background:rgba(59,130,246,.2);border-color:#3b82f6;color:#60a5fa}
+.clip-row{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:4px;border:1px solid rgba(255,255,255,.08)}.clip-label{font-size:10px;color:#666;width:52px}.clip-slider{width:90px;accent-color:#3b82f6;cursor:pointer}.clip-val{font-size:10px;color:#555;width:32px;font-family:monospace;text-align:right}
 #status{position:absolute;bottom:8px;left:10px;font-size:10px;color:#333}
 </style>
 <script type="importmap">
@@ -50,238 +33,138 @@ body{background:#0a0a0a;color:#eee;font-family:'Helvetica Neue',sans-serif;displ
   <button class="scan-btn" data-scan="S23" data-folder="S23_N2_D202">S23 · D202</button>
   <div class="divider"></div>
   <div id="progress-bar"><div id="progress-fill"></div></div>
-  <div id="progress-text">0%</div>
+  <div id="progress-text">0/3 scans</div>
 </div>
-
 <div id="viewer">
-  <div id="loading">
-    <div class="spinner"></div>
-    <div id="prog">Cargando modelos 3D...</div>
-  </div>
+  <div id="loading"><div class="spinner"></div><div id="prog">Cargando modelos 3D...</div></div>
   <div id="scan-name"></div>
-  <div id="controls">
-    <div class="ctrl-row">
-      <button class="ctrl-btn" id="btn-wireframe">Wireframe</button>
-      <button class="ctrl-btn" id="btn-reset">Reset Cámara</button>
-    </div>
-    <div class="clip-row">
-      <label class="clip-label">Techo Y:</label>
-      <input type="range" id="clip-y" class="clip-slider" min="-10" max="30" step="0.1" value="8">
-      <span class="clip-val" id="clip-y-val">8.0m</span>
-    </div>
-  </div>
-  <div id="status"></div>
+  <div id="controls"><div class="ctrl-row"><button class="ctrl-btn" id="wireBtn">Wireframe</button><button class="ctrl-btn" id="resetCam">Reset Cámara</button></div></div>
+  <div id="status">Orbit: drag · Zoom: scroll · Pan: shift+drag</div>
 </div>
-
 <script type="module">
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
 
-const viewer = document.getElementById('viewer');
-const sidebar = document.getElementById('sidebar');
-const loading = document.getElementById('loading');
-const scanName = document.getElementById('scan-name');
-const statusEl = document.getElementById('status');
-const progressBar = document.getElementById('progress-fill');
-const progressText = document.getElementById('progress-text');
-const clipYSlider = document.getElementById('clip-y');
-const clipYVal = document.getElementById('clip-y-val');
-
-const scanBtns = document.querySelectorAll('.scan-btn[data-scan]');
-const btnAll = document.getElementById('btn-all');
-const btnWireframe = document.getElementById('btn-wireframe');
-const btnReset = document.getElementById('btn-reset');
-
-let scene, camera, renderer, controls;
-let meshes = {};
-let activeScan = null;
-let allVisible = false;
-
-// Alignment data for N2
-const alignmentData = {
-  "S21": { dx: 0, dy: 0, dz: 0, rotY_deg: 0 },
-  "S22": { dx: -1.3, dy: 0.57, dz: 4.55, rotY_deg: -90 },
-  "S23": { dx: 13.35, dy: 2.44, dz: 4.55, rotY_deg: 90 }
+const BASE = 'https://media.githubusercontent.com/media/zxy-vc/baw-viewer/main/scans';
+const ALIGNMENT = {
+  S21: { dx:0, dy:0, dz:0, rotY:0, isRef:true },
+  S22: { dx:-1.3, dy:0.57, dz:4.55, rotY:-90, isRef:false },
+  S23: { dx:13.35, dy:2.44, dz:4.55, rotY:90, isRef:false },
 };
+const SCANS = [
+  {id:'S21',folder:'S21_N2_D202_P1'},
+  {id:'S22',folder:'S22_N2_D201_P2'},
+  {id:'S23',folder:'S23_N2_D202'},
+];
 
-function init() {
-  const w = viewer.clientWidth;
-  const h = viewer.clientHeight;
+const viewerEl = document.getElementById('viewer');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setSize(viewerEl.clientWidth, viewerEl.clientHeight);
+viewerEl.appendChild(renderer.domElement);
 
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a0a0a);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a0a);
+const camera = new THREE.PerspectiveCamera(60, viewerEl.clientWidth/viewerEl.clientHeight, 0.01, 500);
+camera.position.set(10, 8, 20);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.07;
+scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+const dir = new THREE.DirectionalLight(0xffffff, 0.5); dir.position.set(5,10,5); scene.add(dir);
+scene.add(new THREE.GridHelper(60, 30, 0x1a1a1a, 0x141414));
 
-  camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 5000);
-  camera.position.set(5, 3, 8);
-
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(w, h);
-  renderer.setPixelRatio(window.devicePixelRatio);
-  viewer.appendChild(renderer.domElement);
-
-  // Lights
-  const ambLight = new THREE.AmbientLight(0xffffff, 0.6);
-  scene.add(ambLight);
-  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  dirLight.position.set(10, 10, 10);
-  scene.add(dirLight);
-
-  // Grid
-  const gridHelper = new THREE.GridHelper(50, 50, 0x222, 0x111);
-  scene.add(gridHelper);
-
-  // Simple orbit
-  setupControls();
-  loadScans();
-  animate();
-
-  window.addEventListener('resize', onWindowResize);
+let loadedObjects = {}, wireMode = false, defPos, defTarget;
+function applyAlignment(obj, id) {
+  const a = ALIGNMENT[id]; if (!a) return;
+  const box = new THREE.Box3().setFromObject(obj);
+  obj.position.y = -box.min.y + a.dy;
+  if (a.isRef) {
+    obj.position.x = -((box.min.x + box.max.x) / 2);
+    obj.position.z = -((box.min.z + box.max.z) / 2);
+  } else {
+    obj.rotation.y = a.rotY * Math.PI / 180;
+    obj.position.x = a.dx; obj.position.z = a.dz;
+  }
 }
-
-function setupControls() {
-  let isDragging = false;
-  let previousMousePosition = { x: 0, y: 0 };
-
-  viewer.addEventListener('mousedown', (e) => {
-    isDragging = true;
-    previousMousePosition = { x: e.clientX, y: e.clientY };
-  });
-
-  viewer.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    const deltaX = e.clientX - previousMousePosition.x;
-    const deltaY = e.clientY - previousMousePosition.y;
-
-    camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), deltaX * 0.005);
-    const right = new THREE.Vector3();
-    camera.getWorldDirection(right);
-    right.cross(camera.up).normalize();
-    camera.position.applyAxisAngle(right, deltaY * 0.005);
-
-    previousMousePosition = { x: e.clientX, y: e.clientY };
-  });
-
-  viewer.addEventListener('mouseup', () => { isDragging = false; });
-  viewer.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 1.1 : 0.9;
-    camera.position.multiplyScalar(delta);
+function fallback(scanId, folder, resolve) {
+  new OBJLoader().load(`${BASE}/${folder}/ReprocessedMesh.obj`, o => {
+    applyAlignment(o, scanId);
+    o.traverse(c => { if (c.isMesh) c.material = new THREE.MeshLambertMaterial({color:0xcccccc, side:THREE.DoubleSide}); });
+    loadedObjects[scanId] = o; resolve(o);
+  }, undefined, () => resolve(null));
+}
+function loadScan(scanId, folder) {
+  return new Promise(resolve => {
+    if (loadedObjects[scanId]) { resolve(loadedObjects[scanId]); return; }
+    const base = `${BASE}/${folder}/`;
+    const mtl = new MTLLoader(); mtl.setPath(base);
+    mtl.load('ReprocessedMesh.mtl', mats => {
+      mats.preload();
+      const obj = new OBJLoader(); obj.setMaterials(mats);
+      obj.load(`${base}ReprocessedMesh.obj`, o => {
+        applyAlignment(o, scanId);
+        o.traverse(c => {
+          if (!c.isMesh) return;
+          const ms = Array.isArray(c.material) ? c.material : [c.material];
+          ms.forEach(m => { m.side = THREE.DoubleSide; if (m.map) { m.map.anisotropy = renderer.capabilities.getMaxAnisotropy(); m.map.needsUpdate = true; } });
+        });
+        loadedObjects[scanId] = o; resolve(o);
+      }, undefined, () => fallback(scanId, folder, resolve));
+    }, undefined, () => fallback(scanId, folder, resolve));
   });
 }
-
-function loadScans() {
-  loading.style.display = 'flex';
-  const loader = new OBJLoader();
-  const scans = ['S21', 'S22', 'S23'];
-  let loaded = 0;
-
-  scans.forEach((scanId, idx) => {
-    const folder = ['S21_N2_D202_P1', 'S22_N2_D201_P2', 'S23_N2_D202'][idx];
-    const objUrl = `https://raw.githubusercontent.com/zxy-vc/baw-viewer/main/scans/${folder}/ReprocessedMesh.obj`;
-
-    console.log(`Loading: ${scanId} from ${objUrl}`);
-    
-    loader.load(objUrl, (obj) => {
-      const alignment = alignmentData[scanId];
-      obj.position.set(alignment.dx, alignment.dy, alignment.dz);
-      obj.rotateY((alignment.rotY_deg * Math.PI) / 180);
-      obj.traverse(child => {
-        if (child.isMesh) {
-          child.material = new THREE.MeshPhongMaterial({ color: 0xcccccc, side: THREE.DoubleSide });
-        }
-      });
-      meshes[scanId] = obj;
-      scene.add(obj);
-
-      loaded++;
-      progressBar.style.width = ((loaded / scans.length) * 100) + '%';
-      progressText.textContent = Math.round((loaded / scans.length) * 100) + '%';
-
-      if (loaded === scans.length) {
-        loading.style.display = 'none';
-        showScan('S21');
-      }
-    }, undefined, (err) => {
-      console.error(`Error loading ${scanId}:`, err);
-    });
-  });
+function clearScene() { Object.values(loadedObjects).forEach(o => { if (o.parent) scene.remove(o); }); }
+function frameAll() {
+  const box = new THREE.Box3();
+  Object.values(loadedObjects).forEach(o => { if (o.parent) box.expandByObject(o); });
+  if (box.isEmpty()) return;
+  const size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
+  const d = Math.max(size.x, size.z) * 1.6;
+  camera.position.set(center.x + d * 0.6, center.y + d * 0.5, center.z + d);
+  controls.target.copy(center); controls.update();
+  defPos = camera.position.clone(); defTarget = controls.target.clone();
+}
+function applyWire(obj, on) { obj.traverse(c => { if (!c.isMesh) return; if (on) { c.userData._m = c.material; c.material = new THREE.MeshBasicMaterial({color:0x3b82f6, wireframe:true}); } else if (c.userData._m) c.material = c.userData._m; }); }
+async function showSingle(id, folder) {
+  clearScene();
+  document.querySelectorAll('.scan-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-scan="${id}"]`)?.classList.add('active');
+  document.getElementById('btn-all').classList.remove('active');
+  document.getElementById('scan-name').textContent = `${id} · ${folder.replace(/_/g,' ')}`;
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('prog').textContent = 'Cargando scan + texturas…';
+  const o = await loadScan(id, folder);
+  if (o) { scene.add(o); frameAll(); if (wireMode) applyWire(o, true); }
+  document.getElementById('loading').style.display = 'none';
+}
+async function showAll() {
+  clearScene();
+  document.querySelectorAll('.scan-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-all').classList.add('active');
+  document.getElementById('scan-name').textContent = 'Todos — N2 Segundo Piso';
+  document.getElementById('loading').style.display = 'flex';
+  const fill = document.getElementById('progress-fill'), txt = document.getElementById('progress-text');
+  let done = 0;
+  for (const {id, folder} of SCANS) {
+    document.getElementById('prog').textContent = `Cargando ${id} (${done + 1}/${SCANS.length})…`;
+    const o = await loadScan(id, folder);
+    if (o) { scene.add(o); if (wireMode) applyWire(o, true); }
+    done++; fill.style.width = (done / SCANS.length * 100) + '%'; txt.textContent = `${done}/${SCANS.length} scans`;
+  }
+  frameAll();
+  document.getElementById('loading').style.display = 'none';
 }
 
-function showScan(scanId) {
-  Object.keys(meshes).forEach(id => {
-    meshes[id].visible = (id === scanId);
-  });
-  activeScan = scanId;
-  allVisible = false;
-  scanName.textContent = `${scanId} · N2 — ${['D202 P1', 'D201 P2', 'D202'][['S21', 'S22', 'S23'].indexOf(scanId)]}`;
-  updateButtons();
-}
-
-function showAll() {
-  Object.keys(meshes).forEach(id => {
-    meshes[id].visible = true;
-  });
-  activeScan = null;
-  allVisible = true;
-  scanName.textContent = 'N2 · Todos los scans';
-  updateButtons();
-}
-
-function updateButtons() {
-  scanBtns.forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.scan === activeScan);
-  });
-  btnAll.classList.toggle('active', allVisible);
-}
-
-scanBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    showScan(btn.dataset.scan);
-  });
-});
-
-btnAll.addEventListener('click', showAll);
-
-btnWireframe.addEventListener('click', () => {
-  btnWireframe.classList.toggle('active');
-  const wireframe = btnWireframe.classList.contains('active');
-  scene.traverse(obj => {
-    if (obj.isMesh) obj.material.wireframe = wireframe;
-  });
-});
-
-btnReset.addEventListener('click', () => {
-  camera.position.set(5, 3, 8);
-  camera.lookAt(0, 0, 0);
-});
-
-clipYSlider.addEventListener('input', (e) => {
-  const y = parseFloat(e.target.value);
-  clipYVal.textContent = y.toFixed(1) + 'm';
-  scene.traverse(obj => {
-    if (obj.isMesh && obj.material) {
-      obj.material.clippingPlanes = [
-        new THREE.Plane(new THREE.Vector3(0, 1, 0), -y)
-      ];
-      obj.material.clipShadows = true;
-    }
-  });
-});
-
-function animate() {
-  requestAnimationFrame(animate);
-  renderer.render(scene, camera);
-}
-
-function onWindowResize() {
-  const w = viewer.clientWidth;
-  const h = viewer.clientHeight;
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-  renderer.setSize(w, h);
-}
-
-init();
+document.getElementById('wireBtn').addEventListener('click', () => { wireMode = !wireMode; Object.values(loadedObjects).forEach(o => { if (o.parent) applyWire(o, wireMode); }); document.getElementById('wireBtn').textContent = wireMode ? 'Sólido' : 'Wireframe'; });
+document.getElementById('resetCam').addEventListener('click', () => { if (defPos) { camera.position.copy(defPos); controls.target.copy(defTarget); controls.update(); } });
+document.getElementById('btn-all').addEventListener('click', showAll);
+document.querySelectorAll('.scan-btn[data-scan]').forEach(btn => btn.addEventListener('click', () => showSingle(btn.dataset.scan, btn.dataset.folder)));
+window.addEventListener('resize', () => { camera.aspect = viewerEl.clientWidth / viewerEl.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(viewerEl.clientWidth, viewerEl.clientHeight); });
+showSingle('S21', 'S21_N2_D202_P1');
+(function animate(){ requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); })();
 </script>
 </body>
 </html>
