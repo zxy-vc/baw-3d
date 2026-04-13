@@ -177,8 +177,11 @@ function loadScans() {
 
   scans.forEach((scanId, idx) => {
     const folder = ['S21_N2_D202_P1', 'S22_N2_D201_P2', 'S23_N2_D202'][idx];
-    const objUrl = `https://cdn.jsdelivr.net/gh/zxy-vc/baw-viewer@main/${folder}/${folder}.obj`;
+    const objUrl = `https://raw.githubusercontent.com/zxy-vc/baw-viewer/main/${folder}/${folder}.obj`;
 
+    // Debug: log URL being loaded
+    console.log(`Loading: ${scanId} from ${objUrl}`);
+    
     loader.load(objUrl, (obj) => {
       const alignment = alignmentData[scanId];
       obj.position.set(alignment.dx, alignment.dy, alignment.dz);
