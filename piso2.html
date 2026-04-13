@@ -177,9 +177,8 @@ function loadScans() {
 
   scans.forEach((scanId, idx) => {
     const folder = ['S21_N2_D202_P1', 'S22_N2_D201_P2', 'S23_N2_D202'][idx];
-    const objUrl = `https://raw.githubusercontent.com/zxy-vc/baw-viewer/main/${folder}/${folder}.obj`;
+    const objUrl = `https://raw.githubusercontent.com/zxy-vc/baw-viewer/main/scans/${folder}/ReprocessedMesh.obj`;
 
-    // Debug: log URL being loaded
     console.log(`Loading: ${scanId} from ${objUrl}`);
     
     loader.load(objUrl, (obj) => {
